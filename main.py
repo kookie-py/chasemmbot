@@ -97,7 +97,7 @@ bot.load_extension("jishaku")
 async def on_ready():
   print(f"Connected To Discord User: {bot.user.name}#{bot.user.discriminator}")
   t_channel = bot.get_channel(918146416747102249)
-  t_msg = await t_channel.fetch_message(934161641245913101)
+  t_msg = await t_channel.fetch_message(934164062324031529)
   view = Tickets1()
   await t_msg.edit(view=view)
   
@@ -117,7 +117,35 @@ async def on_ready():
     pass
   except AttributeError:
     pass
-  
+
+class Tickets1_off(discord.ui.View):
+  def __init__(self):
+    super().__init__(timeout=None)
+  @discord.ui.button(row=0, label='Game Items Request', style=discord.ButtonStyle.red, custom_id="openticket1", disabled=True)
+  async def button_callback1(self, button, interaction):
+    print("hey")
+  @discord.ui.button(row=0, label='Limiteds Request', style=discord.ButtonStyle.red, custom_id="openticket2", disabled=True)
+  async def button_callback2(self, button, interaction):
+    print("hey")
+
+
+@bot.command()
+async def off(ctx):
+  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 253645051702411264):
+    await ctx.message.delete()
+    t_channel = bot.get_channel(918146416747102249)
+    t_msg = await t_channel.fetch_message(934161641245913101)
+    view = Tickets1_off()
+    await t_msg.edit(view=view)
+
+@bot.command()
+async def on(ctx):
+  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 253645051702411264):
+    await ctx.message.delete()
+    t_channel = bot.get_channel(918146416747102249)
+    t_msg = await t_channel.fetch_message(934161641245913101)
+    view = Tickets1()
+    await t_msg.edit(view=view)
 
 @bot.command()
 async def prefix(ctx, arg1=None):
