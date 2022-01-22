@@ -1093,45 +1093,49 @@ async def delf(ctx):
     session = requests.Session()
     session.cookies[".ROBLOSECURITY"] = cookie
     req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-    req = session.post(url="https://auth.roblox.com/")
-    if "X-CSRF-Token" in req.headers:
-      session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-    req2 = session.post(url="https://auth.roblox.com/")
-
-    authData = session.get(f"https://users.roblox.com/v1/users/authenticated").json()
-    rbx_userID = authData['id']
-    
-    client = Client1(cookies=cookie)
-    cookie = Client2(cookie)
-
-    user1 = await cookie.get_user(rbx_userID)
-    friends = await user1.get_friends()
-    users1 = []
-    user_string=""
-    db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
-    mycursor = db.cursor()
-    mycursor.execute("SELECT userID FROM r_users")
-    for fri in friends:
-      users1.append(fri.id)
-    if len(users1) == 0:
-      await ctx.reply("No users were found.")
+    if req.status_code != 200:
+      await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
       return
     else:
-      for user_id in users1:
-        user2 = await cookie.get_user(user_id)
-        user_string+=f"{user2.name}\n"
-        auth_user = await client.get_auth_user()
-        await auth_user.unfriend(TargetId=user2.id)
-      number = len(user_string.split())
-      buffer = io.StringIO()
-      buffer.name = "users.txt"
-      buffer.write(user_string)
-      buffer.seek(0)
-      await ctx.reply(f"**{number}** users were removed", file=discord.File(buffer, 'users.txt'))
+      req = session.post(url="https://auth.roblox.com/")
+      if "X-CSRF-Token" in req.headers:
+        session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
+      req2 = session.post(url="https://auth.roblox.com/")
+
+      authData = session.get(f"https://users.roblox.com/v1/users/authenticated").json()
+      rbx_userID = authData['id']
+      
+      client = Client1(cookies=cookie)
+      cookie = Client2(cookie)
+
+      user1 = await cookie.get_user(rbx_userID)
+      friends = await user1.get_friends()
+      users1 = []
+      user_string=""
+      db = mysql.connector.connect(
+          host="remotemysql.com",
+          user="XPJ9qhFktO",
+          passwd="lXPOlT66Pt",
+          database="XPJ9qhFktO")
+      mycursor = db.cursor()
+      mycursor.execute("SELECT userID FROM r_users")
+      for fri in friends:
+        users1.append(fri.id)
+      if len(users1) == 0:
+        await ctx.reply("No users were found.")
+        return
+      else:
+        for user_id in users1:
+          user2 = await cookie.get_user(user_id)
+          user_string+=f"{user2.name}\n"
+          auth_user = await client.get_auth_user()
+          await auth_user.unfriend(TargetId=user2.id)
+        number = len(user_string.split())
+        buffer = io.StringIO()
+        buffer.name = "users.txt"
+        buffer.write(user_string)
+        buffer.seek(0)
+        await ctx.reply(f"**{number}** users were removed", file=discord.File(buffer, 'users.txt'))
 
 class Trades(discord.ui.View):
   def __init__(self):
@@ -1386,84 +1390,88 @@ async def trades(ctx):
       session = requests.Session()
       session.cookies[".ROBLOSECURITY"] = cookie
       req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-      req = session.post(url="https://auth.roblox.com/")
-      if "X-CSRF-Token" in req.headers:
-        session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-      req2 = session.post(url="https://auth.roblox.com/")
-            
-      number = 0
-      tumber = 0
-      
-      tradeslist = session.get(f"https://trades.roblox.com/v1/trades/Inbound?sortOrder=Asc&limit=10")
-      datalistcount = tradeslist.json()["data"]
-      
-      #trades_count = session.get(f"https://trades.roblox.com/v1/trades/Inbound/count").json()
-      
-      embedss = []
-      
-      if len(datalistcount) == 0:
-        await ctx.reply("No recent Trades Were Found!")
+      if req.status_code != 200:
+        await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
         return
       else:
-        for i in datalistcount:
-          #if "id" in i:
-            
-            ################################
-            ##### Trade Number 1 | INFO ####
-            ################################
-            tradeid_1 = tradeslist.json()["data"][number]["id"]
-            tradesinfo_1 = session.get(f"https://trades.roblox.com/v1/trades/{tradeid_1}")
-            tradesdetails_1 = tradesinfo_1.json()
-            trader_username_1 = tradesdetails_1["user"]["name"]
-            trader_id_1 = tradesdetails_1["user"]["id"]
-            get_avatar_1 = session.get(f"https://thumbnails.roblox.com/v1/users/avatar?userIds={trader_id_1}&size=720x720&format=Png&isCircular=false")
-            avatar_1 = get_avatar_1.json()["data"][0]["imageUrl"]
-            ################################
-            ## Trade Details 1 | MY OFFER ##
-            ################################
-            myoffer_1 = tradesdetails_1["offers"][0]["userAssets"]
-            myoffer_1_string = ""
-            for my_offers_1 in myoffer_1:
-              name1 = my_offers_1["name"]
-              price1 = my_offers_1["recentAveragePrice"]
-              robux1 = tradesdetails_1["offers"][0]["robux"]
-              myoffer_1_string += f"{name1} [R${price1}]\n"
-            #################################
-            # Trade Details 1 | THEIR OFFER #
-            #################################
-            theiroffer_1 = tradesdetails_1["offers"][1]["userAssets"]
-            theiroffer_1_string = ""
-            for their_offers_1 in theiroffer_1:
-              name2 = their_offers_1["name"]
-              price2 = their_offers_1["recentAveragePrice"]
-              robux2 = tradesdetails_1["offers"][1]["robux"]
-              theiroffer_1_string += f"{name2} [R${price2}]\n"
-            tumber+=1
-            embe = discord.Embed(title=f"{tumber} | Trade with {trader_username_1}", description=f"User ID: `{trader_id_1}` | User's Profile: [Link](https://www.roblox.com/users/{trader_id_1})\nTrade ID: `{tradeid_1}`\n<:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440>\n**What You Give:**\n{myoffer_1_string}Robux (After tax): {robux1}\n\n**What They Give:**\n{theiroffer_1_string}Robux (After tax): {robux2}\n<:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440>", color=0x58b9ff)
-            embe.set_thumbnail(url=avatar_1)
-            embe_blocked = discord.Embed(title=f"{tumber} | Trade with {trader_username_1}", description=f"User ID: `{trader_id_1}` | User's Profile: [Link](https://www.roblox.com/users/{trader_id_1})\nTrade ID: `{tradeid_1}`\n<:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440>\n**What You Give:**\n{myoffer_1_string}Robux (After tax): {robux1}\n\n**What They Give:**\n{theiroffer_1_string}Robux (After tax): {robux2}\n<:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440>", color=0x58b9ff)
-            embe_blocked.set_thumbnail(url=avatar_1)
-            
-            if (get_avatar_1.json()["data"][0]["state"]) == "Blocked":
-              embedss.append(embe_blocked)
-            elif (get_avatar_1.json()["data"][0]["state"]) == "Completed":
-              embedss.append(embe)
-            
-            number+=1
+        req = session.post(url="https://auth.roblox.com/")
+        if "X-CSRF-Token" in req.headers:
+          session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
+        req2 = session.post(url="https://auth.roblox.com/")
+              
+        number = 0
+        tumber = 0
+        
+        tradeslist = session.get(f"https://trades.roblox.com/v1/trades/Inbound?sortOrder=Asc&limit=10")
+        datalistcount = tradeslist.json()["data"]
+        
+        #trades_count = session.get(f"https://trades.roblox.com/v1/trades/Inbound/count").json()
+        
+        embedss = []
+        
+        if len(datalistcount) == 0:
+          await ctx.reply("No recent Trades Were Found!")
+          return
+        else:
+          for i in datalistcount:
+            #if "id" in i:
+              
+              ################################
+              ##### Trade Number 1 | INFO ####
+              ################################
+              tradeid_1 = tradeslist.json()["data"][number]["id"]
+              tradesinfo_1 = session.get(f"https://trades.roblox.com/v1/trades/{tradeid_1}")
+              tradesdetails_1 = tradesinfo_1.json()
+              trader_username_1 = tradesdetails_1["user"]["name"]
+              trader_id_1 = tradesdetails_1["user"]["id"]
+              get_avatar_1 = session.get(f"https://thumbnails.roblox.com/v1/users/avatar?userIds={trader_id_1}&size=720x720&format=Png&isCircular=false")
+              avatar_1 = get_avatar_1.json()["data"][0]["imageUrl"]
+              ################################
+              ## Trade Details 1 | MY OFFER ##
+              ################################
+              myoffer_1 = tradesdetails_1["offers"][0]["userAssets"]
+              myoffer_1_string = ""
+              for my_offers_1 in myoffer_1:
+                name1 = my_offers_1["name"]
+                price1 = my_offers_1["recentAveragePrice"]
+                robux1 = tradesdetails_1["offers"][0]["robux"]
+                myoffer_1_string += f"{name1} [R${price1}]\n"
+              #################################
+              # Trade Details 1 | THEIR OFFER #
+              #################################
+              theiroffer_1 = tradesdetails_1["offers"][1]["userAssets"]
+              theiroffer_1_string = ""
+              for their_offers_1 in theiroffer_1:
+                name2 = their_offers_1["name"]
+                price2 = their_offers_1["recentAveragePrice"]
+                robux2 = tradesdetails_1["offers"][1]["robux"]
+                theiroffer_1_string += f"{name2} [R${price2}]\n"
+              tumber+=1
+              embe = discord.Embed(title=f"{tumber} | Trade with {trader_username_1}", description=f"User ID: `{trader_id_1}` | User's Profile: [Link](https://www.roblox.com/users/{trader_id_1})\nTrade ID: `{tradeid_1}`\n<:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440>\n**What You Give:**\n{myoffer_1_string}Robux (After tax): {robux1}\n\n**What They Give:**\n{theiroffer_1_string}Robux (After tax): {robux2}\n<:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440>", color=0x58b9ff)
+              embe.set_thumbnail(url=avatar_1)
+              embe_blocked = discord.Embed(title=f"{tumber} | Trade with {trader_username_1}", description=f"User ID: `{trader_id_1}` | User's Profile: [Link](https://www.roblox.com/users/{trader_id_1})\nTrade ID: `{tradeid_1}`\n<:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440>\n**What You Give:**\n{myoffer_1_string}Robux (After tax): {robux1}\n\n**What They Give:**\n{theiroffer_1_string}Robux (After tax): {robux2}\n<:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440><:purpleline:914567197727293440>", color=0x58b9ff)
+              embe_blocked.set_thumbnail(url=avatar_1)
+              
+              if (get_avatar_1.json()["data"][0]["state"]) == "Blocked":
+                embedss.append(embe_blocked)
+              elif (get_avatar_1.json()["data"][0]["state"]) == "Completed":
+                embedss.append(embe)
+              
+              number+=1
 
 
-        paginator = pages.Paginator(pages=embedss, show_disabled=True, show_indicator=True, timeout=None, custom_view=Trades())
-        
-        leftarrow = bot.get_emoji(881774037825630259)
-        rightarrow = bot.get_emoji(881773865137766400)
-        leftarrow1 = bot.get_emoji(881774578035228703)
-        rightarrow1 = bot.get_emoji(881774548335349772)
-        
-        paginator.add_button(pages.PaginatorButton("next", style=discord.ButtonStyle.green, emoji=leftarrow))
-        paginator.add_button(pages.PaginatorButton("prev", style=discord.ButtonStyle.green, emoji=rightarrow))
-        paginator.add_button(pages.PaginatorButton("first", style=discord.ButtonStyle.blurple, emoji=leftarrow1))
-        paginator.add_button(pages.PaginatorButton("last", style=discord.ButtonStyle.blurple, emoji=rightarrow1))
-        await paginator.send(ctx)
+          paginator = pages.Paginator(pages=embedss, show_disabled=True, show_indicator=True, timeout=None, custom_view=Trades())
+          
+          leftarrow = bot.get_emoji(881774037825630259)
+          rightarrow = bot.get_emoji(881773865137766400)
+          leftarrow1 = bot.get_emoji(881774578035228703)
+          rightarrow1 = bot.get_emoji(881774548335349772)
+          
+          paginator.add_button(pages.PaginatorButton("next", style=discord.ButtonStyle.green, emoji=leftarrow))
+          paginator.add_button(pages.PaginatorButton("prev", style=discord.ButtonStyle.green, emoji=rightarrow))
+          paginator.add_button(pages.PaginatorButton("first", style=discord.ButtonStyle.blurple, emoji=leftarrow1))
+          paginator.add_button(pages.PaginatorButton("last", style=discord.ButtonStyle.blurple, emoji=rightarrow1))
+          await paginator.send(ctx)
 
 @bot.command()
 async def pl(ctx):
@@ -1472,23 +1480,27 @@ async def pl(ctx):
     session = requests.Session()
     session.cookies[".ROBLOSECURITY"] = cookie
     req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-    req = session.post(url="https://auth.roblox.com/")
-    if "X-CSRF-Token" in req.headers:
-      session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-    req2 = session.post(url="https://auth.roblox.com/")
+    if req.status_code != 200:
+      await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
+      return
+    else:
+      req = session.post(url="https://auth.roblox.com/")
+      if "X-CSRF-Token" in req.headers:
+        session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
+      req2 = session.post(url="https://auth.roblox.com/")
 
-    authData = session.get(f"https://users.roblox.com/v1/users/authenticated").json()
-    rbx_userID = authData['id']
-    rbx_name = authData['name']  
+      authData = session.get(f"https://users.roblox.com/v1/users/authenticated").json()
+      rbx_userID = authData['id']
+      rbx_name = authData['name']  
 
-    get_avatar_0 = session.get(f"https://thumbnails.roblox.com/v1/users/avatar?userIds={rbx_userID}&size=720x720&format=Png&isCircular=false")
-    avatar_0 = get_avatar_0.json()["data"][0]["imageUrl"]
+      get_avatar_0 = session.get(f"https://thumbnails.roblox.com/v1/users/avatar?userIds={rbx_userID}&size=720x720&format=Png&isCircular=false")
+      avatar_0 = get_avatar_0.json()["data"][0]["imageUrl"]
 
-    embed = discord.Embed(title="Profile Lookup", color=maincolor)
-    embed.add_field(name="Account Username", value=f"{rbx_name}", inline=False)
-    embed.add_field(name="Profile Links", value=f"[Trade Me](https://www.roblox.com/users/{rbx_userID}/profile) | [ROBLOX Profile](https://roblox.com/users/{rbx_userID}/trade)", inline=False)
-    embed.set_thumbnail(url=avatar_0)
-    await ctx.reply(embed=embed)
+      embed = discord.Embed(title="Profile Lookup", color=maincolor)
+      embed.add_field(name="Account Username", value=f"{rbx_name}", inline=False)
+      embed.add_field(name="Profile Links", value=f"[Trade Me](https://www.roblox.com/users/{rbx_userID}/profile) | [ROBLOX Profile](https://roblox.com/users/{rbx_userID}/trade)", inline=False)
+      embed.set_thumbnail(url=avatar_0)
+      await ctx.reply(embed=embed)
 
 @bot.command()
 async def mm(ctx):
@@ -1515,31 +1527,35 @@ async def get_f(ctx):
       session = requests.Session()
       session.cookies[".ROBLOSECURITY"] = cookie
       req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-      req = session.post(url="https://auth.roblox.com/")
-      if "X-CSRF-Token" in req.headers:
-        session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-      req2 = session.post(url="https://auth.roblox.com/")
+      if req.status_code != 200:
+        await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
+        return
+      else:
+        req = session.post(url="https://auth.roblox.com/")
+        if "X-CSRF-Token" in req.headers:
+          session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
+        req2 = session.post(url="https://auth.roblox.com/")
 
-      requests_data = session.get(f"https://friends.roblox.com/v1/my/friends/requests?sortOrder=Desc&limit=10").json()["data"]
-      text_str = ""
-      for i in requests_data:
-        sentAt = i["friendRequest"]["sentAt"]
-        a = arrow.get(sentAt)
-        sentAtDate = math.trunc(a.timestamp())
+        requests_data = session.get(f"https://friends.roblox.com/v1/my/friends/requests?sortOrder=Desc&limit=10").json()["data"]
+        text_str = ""
+        for i in requests_data:
+          sentAt = i["friendRequest"]["sentAt"]
+          a = arrow.get(sentAt)
+          sentAtDate = math.trunc(a.timestamp())
 
-        createdAt = i["created"]
-        b = arrow.get(createdAt)
-        createdAtDate = math.trunc(b.timestamp())
-        
-        senderId = i["friendRequest"]["senderId"]
-        username = i["name"]
-        displayName = i["displayName"]
-        text_str+=f"[{username}](https://www.roblox.com/users/{senderId}) - Sent since <t:{sentAtDate}:R>\n"
-      embed = discord.Embed(title="Recent Friend Requests", description=text_str, color=maincolor)
-    if len(requests_data) == 0:
-      await ctx.reply("No recent friend requests were found!")
-    else:
-      await ctx.reply(embed=embed)
+          createdAt = i["created"]
+          b = arrow.get(createdAt)
+          createdAtDate = math.trunc(b.timestamp())
+          
+          senderId = i["friendRequest"]["senderId"]
+          username = i["name"]
+          displayName = i["displayName"]
+          text_str+=f"[{username}](https://www.roblox.com/users/{senderId}) - Sent since <t:{sentAtDate}:R>\n"
+        embed = discord.Embed(title="Recent Friend Requests", description=text_str, color=maincolor)
+      if len(requests_data) == 0:
+        await ctx.reply("No recent friend requests were found!")
+      else:
+        await ctx.reply(embed=embed)
 
 @bot.command()
 async def acc_f(ctx, arg1=None):
@@ -1548,30 +1564,34 @@ async def acc_f(ctx, arg1=None):
     session = requests.Session()
     session.cookies[".ROBLOSECURITY"] = cookie
     req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-    req = session.post(url="https://auth.roblox.com/")
-    if "X-CSRF-Token" in req.headers:
-      session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-    req2 = session.post(url="https://auth.roblox.com/")
-
-    if arg1==None:
-      await ctx.reply("Username is missing!")
+    if req.status_code != 200:
+      await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
+      return
     else:
-      async with ctx.channel.typing():
-        data = {"usernames": arg1}
-        get_user = session.post(f"https://users.roblox.com/v1/usernames/users", data=data).json()
-        usernamu = get_user["data"][0]["id"]
-        usernamua = get_user["data"][0]["name"]
-        Request = session.post(f"https://friends.roblox.com/v1/users/{usernamu}/accept-friend-request")
-        if (Request.status_code == 200):
-          await ctx.reply(embed=discord.Embed(title="Friend Request Accepted", description=f"Accepted friend request for {usernamua}", color=maincolor))
-        elif (Request.status_code == 400):
-          await ctx.reply(embed=discord.Embed(description=f"*Unknown error has occurred*", color=0xED4245))
-        elif (Request.status_code == 401):
-          await ctx.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
-        elif (Request.status_code == 403):
-          await ctx.reply(embed=discord.Embed(description=f"*Token Validation Failed*", color=0xED4245))
-        elif (Request.status_code == 429):
-          await ctx.reply(embed=discord.Embed(description=f"*The flood limit has been exceeded*", color=0xED4245))
+      req = session.post(url="https://auth.roblox.com/")
+      if "X-CSRF-Token" in req.headers:
+        session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
+      req2 = session.post(url="https://auth.roblox.com/")
+
+      if arg1==None:
+        await ctx.reply("Username is missing!")
+      else:
+        async with ctx.channel.typing():
+          data = {"usernames": arg1}
+          get_user = session.post(f"https://users.roblox.com/v1/usernames/users", data=data).json()
+          usernamu = get_user["data"][0]["id"]
+          usernamua = get_user["data"][0]["name"]
+          Request = session.post(f"https://friends.roblox.com/v1/users/{usernamu}/accept-friend-request")
+          if (Request.status_code == 200):
+            await ctx.reply(embed=discord.Embed(title="Friend Request Accepted", description=f"Accepted friend request for {usernamua}", color=maincolor))
+          elif (Request.status_code == 400):
+            await ctx.reply(embed=discord.Embed(description=f"*Unknown error has occurred*", color=0xED4245))
+          elif (Request.status_code == 401):
+            await ctx.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
+          elif (Request.status_code == 403):
+            await ctx.reply(embed=discord.Embed(description=f"*Token Validation Failed*", color=0xED4245))
+          elif (Request.status_code == 429):
+            await ctx.reply(embed=discord.Embed(description=f"*The flood limit has been exceeded*", color=0xED4245))
 
 @bot.command()
 async def dec_f(ctx, arg1=None):
@@ -1580,30 +1600,34 @@ async def dec_f(ctx, arg1=None):
     session = requests.Session()
     session.cookies[".ROBLOSECURITY"] = cookie
     req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-    req = session.post(url="https://auth.roblox.com/")
-    if "X-CSRF-Token" in req.headers:
-      session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-    req2 = session.post(url="https://auth.roblox.com/")
-
-    if arg1==None:
-      await ctx.reply("Username is missing!")
+    if req.status_code != 200:
+      await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
+      return
     else:
-      async with ctx.channel.typing():
-        data = {"usernames": arg1}
-        get_user = session.post(f"https://users.roblox.com/v1/usernames/users", data=data).json()
-        usernamu = get_user["data"][0]["id"]
-        usernamua = get_user["data"][0]["name"]
-        Request = session.post(f"https://friends.roblox.com/v1/users/{usernamu}/decline-friend-request")
-        if (Request.status_code == 200):
-          await ctx.reply(embed=discord.Embed(title="Friend Request Declined", description=f"Decliend friend request for **{usernamua}**", color=maincolor))
-        elif (Request.status_code == 400):
-          await ctx.reply(embed=discord.Embed(description=f"*Unknown error has occurred*", color=0xED4245))
-        elif (Request.status_code == 401):
-          await ctx.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
-        elif (Request.status_code == 403):
-          await ctx.reply(embed=discord.Embed(description=f"*Token Validation Failed*", color=0xED4245))
-        elif (Request.status_code == 429):
-          await ctx.reply(embed=discord.Embed(description=f"*The flood limit has been exceeded*", color=0xED4245))
+      req = session.post(url="https://auth.roblox.com/")
+      if "X-CSRF-Token" in req.headers:
+        session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
+      req2 = session.post(url="https://auth.roblox.com/")
+
+      if arg1==None:
+        await ctx.reply("Username is missing!")
+      else:
+        async with ctx.channel.typing():
+          data = {"usernames": arg1}
+          get_user = session.post(f"https://users.roblox.com/v1/usernames/users", data=data).json()
+          usernamu = get_user["data"][0]["id"]
+          usernamua = get_user["data"][0]["name"]
+          Request = session.post(f"https://friends.roblox.com/v1/users/{usernamu}/decline-friend-request")
+          if (Request.status_code == 200):
+            await ctx.reply(embed=discord.Embed(title="Friend Request Declined", description=f"Decliend friend request for **{usernamua}**", color=maincolor))
+          elif (Request.status_code == 400):
+            await ctx.reply(embed=discord.Embed(description=f"*Unknown error has occurred*", color=0xED4245))
+          elif (Request.status_code == 401):
+            await ctx.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
+          elif (Request.status_code == 403):
+            await ctx.reply(embed=discord.Embed(description=f"*Token Validation Failed*", color=0xED4245))
+          elif (Request.status_code == 429):
+            await ctx.reply(embed=discord.Embed(description=f"*The flood limit has been exceeded*", color=0xED4245))
 
 @bot.command()
 async def dec_trades(ctx):
@@ -1613,22 +1637,26 @@ async def dec_trades(ctx):
       session = requests.Session()
       session.cookies[".ROBLOSECURITY"] = cookie
       req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-      req = session.post(url="https://auth.roblox.com/")
-      if "X-CSRF-Token" in req.headers:
-        session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-      req2 = session.post(url="https://auth.roblox.com/")
-      
-      Request = session.post(f"https://friends.roblox.com/v1/user/friend-requests/decline-all")
-      if (Request.status_code == 200):
-        await ctx.reply(embed=discord.Embed(title="Declined All Inbound Trades", description=f"All inbound trades have been declined.", color=maincolor))
-      elif (Request.status_code == 400):
-        await ctx.reply(embed=discord.Embed(description=f"*Unknown error has occurred*", color=0xED4245))
-      elif (Request.status_code == 401):
-        await ctx.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
-      elif (Request.status_code == 403):
-        await ctx.reply(embed=discord.Embed(description=f"*Token Validation Failed*", color=0xED4245))
-      elif (Request.status_code == 429):
-        await ctx.reply(embed=discord.Embed(description=f"*The flood limit has been exceeded*", color=0xED4245))
+      if req.status_code != 200:
+        await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
+        return
+      else:
+        req = session.post(url="https://auth.roblox.com/")
+        if "X-CSRF-Token" in req.headers:
+          session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
+        req2 = session.post(url="https://auth.roblox.com/")
+        
+        Request = session.post(f"https://friends.roblox.com/v1/user/friend-requests/decline-all")
+        if (Request.status_code == 200):
+          await ctx.reply(embed=discord.Embed(title="Declined All Inbound Trades", description=f"All inbound trades have been declined.", color=maincolor))
+        elif (Request.status_code == 400):
+          await ctx.reply(embed=discord.Embed(description=f"*Unknown error has occurred*", color=0xED4245))
+        elif (Request.status_code == 401):
+          await ctx.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
+        elif (Request.status_code == 403):
+          await ctx.reply(embed=discord.Embed(description=f"*Token Validation Failed*", color=0xED4245))
+        elif (Request.status_code == 429):
+          await ctx.reply(embed=discord.Embed(description=f"*The flood limit has been exceeded*", color=0xED4245))
 
 @bot.command()
 async def decall(ctx):
@@ -1645,23 +1673,27 @@ async def decall(ctx):
     session = requests.Session()
     session.cookies[".ROBLOSECURITY"] = cookie
     req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-    req = session.post(url="https://auth.roblox.com/")
-    if "X-CSRF-Token" in req.headers:
-      session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-    req2 = session.post(url="https://auth.roblox.com/")
-    Request = session.post(f"https://friends.roblox.com/v1/user/friend-requests/decline-all")
-    if (Request.status_code == 200):
-      await ctx.reply(embed=discord.Embed(title="Friend Requests Ignored", description=f"All friend requests have been ignored!", color=maincolor))
-      mycursor.execute(f"DELETE FROM f_id")
-      db.commit()
-    elif (Request.status_code == 400):
-      await ctx.reply(embed=discord.Embed(description=f"*Unknown error has occurred*", color=0xED4245))
-    elif (Request.status_code == 401):
+    if req.status_code != 200:
       await ctx.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
-    elif (Request.status_code == 403):
-      await ctx.reply(embed=discord.Embed(description=f"*Token Validation Failed*", color=0xED4245))
-    elif (Request.status_code == 429):
-      await ctx.reply(embed=discord.Embed(description=f"*The flood limit has been exceeded*", color=0xED4245))
+      return
+    else:
+      req = session.post(url="https://auth.roblox.com/")
+      if "X-CSRF-Token" in req.headers:
+        session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
+      req2 = session.post(url="https://auth.roblox.com/")
+      Request = session.post(f"https://friends.roblox.com/v1/user/friend-requests/decline-all")
+      if (Request.status_code == 200):
+        await ctx.reply(embed=discord.Embed(title="Friend Requests Ignored", description=f"All friend requests have been ignored!", color=maincolor))
+        mycursor.execute(f"DELETE FROM f_id")
+        db.commit()
+      elif (Request.status_code == 400):
+        await ctx.reply(embed=discord.Embed(description=f"*Unknown error has occurred*", color=0xED4245))
+      elif (Request.status_code == 401):
+        await ctx.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
+      elif (Request.status_code == 403):
+        await ctx.reply(embed=discord.Embed(description=f"*Token Validation Failed*", color=0xED4245))
+      elif (Request.status_code == 429):
+        await ctx.reply(embed=discord.Embed(description=f"*The flood limit has been exceeded*", color=0xED4245))
 
 
 @bot.command()
