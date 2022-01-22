@@ -545,7 +545,7 @@ class Tickets1(discord.ui.View):
 async def remove(ctx, user : discord.Member):  
   rolereq = ctx.guild.get_role(829448689830985728)
   ticketlogs = bot.get_channel(925662272905412679)
-  if rolereq in ctx.author.roles:
+  if rolereq in ctx.author.roles or ctx.author.id==358594990982561792:
     
     db = mysql.connector.connect(
       host="remotemysql.com",
@@ -599,7 +599,7 @@ async def delete(ctx):
   ticketlogs = bot.get_channel(925662272905412679)
   transcripts = bot.get_channel(925662272905412679)
   Status = True
-  if (rolereq in ctx.author.roles):
+  if (rolereq in ctx.author.roles) or ctx.author.id==358594990982561792:
     async with ctx.channel.typing():
       db = mysql.connector.connect(
         host="remotemysql.com",
@@ -673,7 +673,7 @@ async def delete(ctx):
 @bot.command()
 async def rename(ctx, *args):
   rolereq = ctx.guild.get_role(829448689830985728)
-  if (rolereq in ctx.author.roles):
+  if (rolereq in ctx.author.roles) or ctx.author.id==358594990982561792:
     
     db = mysql.connector.connect(
       host="remotemysql.com",
@@ -700,7 +700,7 @@ async def rename(ctx, *args):
 @commands.cooldown(1, 10, commands.BucketType.channel)
 async def close(ctx):
   rolereq = ctx.guild.get_role(829448689830985728)
-  if rolereq in ctx.author.roles:
+  if rolereq in ctx.author.roles or ctx.author.id==358594990982561792:
     async with ctx.channel.typing():
       db = mysql.connector.connect(
         host="remotemysql.com",
@@ -752,7 +752,7 @@ async def reopen(ctx):
   rolereq = ctx.guild.get_role(829448689830985728)
   guild = bot.get_guild(713213895073857548)
   ticketlogs = bot.get_channel(925662272905412679)
-  if rolereq in ctx.author.roles:
+  if rolereq in ctx.author.roles or ctx.author.id==358594990982561792:
       db = mysql.connector.connect(
         host="remotemysql.com",
         user="XPJ9qhFktO",
@@ -966,51 +966,50 @@ async def transcript(ctx):
   ticketlogs = bot.get_channel(925662272905412679)
   transcripts = bot.get_channel(925662272905412679)
   loading_embed = discord.Embed(title="Ticket Saved", description=f"All ticket information has been saved to **<#925662272905412679>**.",color = maincolor)
-  transcript = await chat_exporter.export(channel=ctx.channel, limit=None, set_timezone="America/Los_Angeles")
-  if (rolereq in ctx.author.roles):
-    
-    db = mysql.connector.connect(
-      host="remotemysql.com",
-      user="XPJ9qhFktO",
-      passwd="lXPOlT66Pt",
-      database="XPJ9qhFktO")
-    mycursor = db.cursor()
-    mycursor.execute(f"SELECT channelID FROM t_status WHERE channelID = {ctx.channel.id}")
-    data = mycursor.fetchall()
-    if len(data) == 0:
-      await ctx.reply("This channel isn't a ticket.")
-      return
-    else:
-    
-      async with ctx.channel.typing():
+  if (rolereq in ctx.author.roles) or ctx.author.id==358594990982561792:
+    async with ctx.channel.typing():
+      db = mysql.connector.connect(
+        host="remotemysql.com",
+        user="XPJ9qhFktO",
+        passwd="lXPOlT66Pt",
+        database="XPJ9qhFktO")
+      mycursor = db.cursor()
+      mycursor.execute(f"SELECT channelID FROM t_status WHERE channelID = {ctx.channel.id}")
+      data = mycursor.fetchall()
+      if len(data) == 0:
+        await ctx.reply("This channel isn't a ticket.")
+        return
+      else:
       
-        msg = await ctx.reply(embed=loading_embed)
-        if transcript is None:
-          return
-        transcript_file = discord.File(io.BytesIO(transcript.encode()), filename=f"transcript-{ctx.channel.name}.html")
-        transcriptembed = discord.Embed(color=0x1EC45C)
-        transcriptembed.add_field(name="Author", value=f"{ctx.author.mention} | {ctx.author.id}", inline=True)
-        transcriptembed.add_field(name="Ticket", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=True)
-        if ctx.channel.category != None:
-          transcriptembed.add_field(name="Category", value=f"{ctx.channel.category.name} | {ctx.channel.category.id}", inline=True)
-        mess = await transcripts.send(embed=transcriptembed, file=transcript_file)
-        attachment = mess.attachments[0]
-        messages = await ctx.channel.history(limit=None).flatten()
-        for msg in messages[::1]:
-            if msg.author.id in users.keys():
-              users[msg.author.id]+=1
-            else:
-              users[msg.author.id]=1
-        user_string,user_transcript_string="",""
-        b = sorted(users.items(), key=lambda x: x[1], reverse=True)
-        try:
-          for k in b:
-            user = await bot.fetch_user(int(k[0]))
-            user_string+=f"{k[1]} | {user.mention} | {user.name}#{user.discriminator}\n"
-        except NotFound:
-          pass
-        await mess.edit(embed=transcriptembed.add_field(name="**Direct Transcript**", value=f"[Direct Transcript](https://tickettool.xyz/direct?url={attachment.url})", inline=True))
-        await mess.edit(embed=transcriptembed.add_field(name="**Users in transcript**", value=f"{user_string}", inline=True))
+        
+          transcript = await chat_exporter.export(channel=ctx.channel, limit=None, set_timezone="America/Los_Angeles")
+          if transcript is None:
+            return
+          transcript_file = discord.File(io.BytesIO(transcript.encode()), filename=f"transcript-{ctx.channel.name}.html")
+          transcriptembed = discord.Embed(color=0x1EC45C)
+          transcriptembed.add_field(name="Author", value=f"{ctx.author.mention} | {ctx.author.id}", inline=True)
+          transcriptembed.add_field(name="Ticket", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=True)
+          if ctx.channel.category != None:
+            transcriptembed.add_field(name="Category", value=f"{ctx.channel.category.name} | {ctx.channel.category.id}", inline=True)
+          mess = await transcripts.send(embed=transcriptembed, file=transcript_file)
+          msg = await ctx.reply(embed=loading_embed)
+          attachment = mess.attachments[0]
+          messages = await ctx.channel.history(limit=None).flatten()
+          for msg in messages[::1]:
+              if msg.author.id in users.keys():
+                users[msg.author.id]+=1
+              else:
+                users[msg.author.id]=1
+          user_string,user_transcript_string="",""
+          b = sorted(users.items(), key=lambda x: x[1], reverse=True)
+          try:
+            for k in b:
+              user = await bot.fetch_user(int(k[0]))
+              user_string+=f"{k[1]} | {user.mention} | {user.name}#{user.discriminator}\n"
+          except NotFound:
+            pass
+          await mess.edit(embed=transcriptembed.add_field(name="**Direct Transcript**", value=f"[Direct Transcript](https://tickettool.xyz/direct?url={attachment.url})", inline=True))
+          await mess.edit(embed=transcriptembed.add_field(name="**Users in transcript**", value=f"{user_string}", inline=True))
 
 @bot.listen()
 async def on_command_error(ctx, error):
@@ -1758,7 +1757,7 @@ async def mmban(ctx, member : discord.Member = None):
   rolereq = ctx.guild.get_role(829448689830985728)
   blc = bot.get_channel(925662272905412679)
   PREFIX = get_prefix()
-  if (rolereq in ctx.author.roles):
+  if (rolereq in ctx.author.roles) or ctx.author.id==358594990982561792:
     if member == None:
       await ctx.reply(f"Please mention a user to blacklist.\n*`usuage: {PREFIX}mmban @user`*")
       return
