@@ -1140,7 +1140,7 @@ class Trades(discord.ui.View):
   async def button_callback0(self, button, interaction):
     await interaction.response.send_message(content=f"Block0", ephemeral=True)
     
-  @discord.ui.button(row=1, label='Accept Trade', style=discord.ButtonStyle.green, custom_id="accept_trade", disabled=False)
+  @discord.ui.button(row=1, label='Accept Trade', style=discord.ButtonStyle.green, custom_id="accept_trade", disabled=False, emoji="<:approve:863985290602479627>")
   async def button_callback1(self, button, interaction):    
     if interaction.user.id == 358594990982561792 or interaction.user.id == 253645051702411264:
       cookie = await get_cookie()
@@ -1160,7 +1160,7 @@ class Trades(discord.ui.View):
       for emi in interaction.message.embeds:
           adaa = int(emi.title.split("|")[0])
           tradeid_1 = int(emi.title.split("|")[0]) - 1
-          emi.description+=f"\n**<a:MCE_yes:914566072101912628> Trade Accepted <a:MCE_yes:914566072101912628>**"
+          emi.description+=f"\n**<:approve:863985290602479627> Trade Accepted <:approve:863985290602479627>**"
           emi.color = 0x57F288
         
       Request = session.post(f"https://trades.roblox.com/v1/trades/{tradeid_1}/decline")
@@ -1255,11 +1255,11 @@ class Trades(discord.ui.View):
     else:
         await interaction.response.defer()
 
-  @discord.ui.button(row=1, label='Decline Trade', style=discord.ButtonStyle.red, custom_id="decline_trade", disabled=False)
+  @discord.ui.button(row=1, label='Decline Trade', style=discord.ButtonStyle.red, custom_id="decline_trade", disabled=False, emoji="<:deny:863985438503206922>")
   async def button_callback2(self, button, interaction):    
     if interaction.user.id == 358594990982561792 or interaction.user.id == 253645051702411264:
 
-      cookie = "DB33C9706A3CA7F0E5EE56E9283C4FB0FFF16FA4ECCEED21D1F26E7F95676F685E5E44847B937DA322587B2A0E504CB631847435EAE7E568FE8678453E543823C242B1003C3EAB7D5166937E0B72A61C32FFA2B3080046CC5F4276CE3A63ED62BAA6A64BC5BACA4269A38CC8C2B62BCFA4E60C14109AA888B439AF9C81C75FD68656D206517E5FBC1195DCA128758A812AECF66B7C196B346FFDA64D53FD6F778F0CB4CA59073F89DFBA2E8B580EE945B41A311AD20E605E6E79FD7233367DA2E25D423AA49170FDD6B6009AA14BFEA412535991E2ED5E49015AE03BBA1EB08EABCD3599C4FE730142559833752CD7BF8B2504D0129BFA4AECD66DB8BEA431AA6125B4944E90DEBADFCA15009FC38FA4628D97313668E5BB0604A8A134173889E289F14DE60A12B4CDEBDC30D1DBFE4572779E90A9DE1CCAA9D36D99B8E6F0A35D7E04D6"
+      cookie = await get_cookie()
       session = requests.Session()
       session.cookies[".ROBLOSECURITY"] = cookie
       req = session.get(url="https://users.roblox.com/v1/users/authenticated")
@@ -1276,7 +1276,7 @@ class Trades(discord.ui.View):
       for emi in interaction.message.embeds:
         adaa = int(emi.title.split("|")[0])
         tradeid_1 = int(emi.title.split("|")[0]) - 1
-        emi.description+=f"\n**<a:No:914566121460486184> Trade Declined <a:No:914566121460486184>**"
+        emi.description+=f"\n**<:deny:863985438503206922> Trade Declined <:deny:863985438503206922>**"
         emi.color = 0xED4245
           
       Request = session.post(f"https://trades.roblox.com/v1/trades/{tradeid_1}/decline")
@@ -1390,11 +1390,6 @@ async def trades(ctx):
       if "X-CSRF-Token" in req.headers:
         session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
       req2 = session.post(url="https://auth.roblox.com/")
-
-      leftarrow = bot.get_emoji(927708850742775829)
-      rightarrow = bot.get_emoji(927708851430637621)
-      leftarrow_1 = bot.get_emoji(927708851011223582)
-      rightarrow_1 = bot.get_emoji(927708851422236672)
             
       number = 0
       tumber = 0
@@ -1459,12 +1454,16 @@ async def trades(ctx):
 
         paginator = pages.Paginator(pages=embedss, show_disabled=True, show_indicator=True, timeout=None, custom_view=Trades())
         
-        paginator.customize_button("next", button_style=discord.ButtonStyle.green, button_emoji=rightarrow)
-        paginator.customize_button("prev", button_style=discord.ButtonStyle.green, button_emoji=leftarrow)
-        paginator.customize_button("first", button_style=discord.ButtonStyle.blurple, button_emoji=leftarrow_1)
-        paginator.customize_button("last", button_style=discord.ButtonStyle.blurple, button_emoji=rightarrow_1)
+        leftarrow = bot.get_emoji(881774037825630259)
+        rightarrow = bot.get_emoji(881773865137766400)
+        leftarrow1 = bot.get_emoji(881774578035228703)
+        rightarrow1 = bot.get_emoji(881774548335349772)
         
-    await paginator.send(ctx)
+        paginator.add_button(pages.PaginatorButton("next", style=discord.ButtonStyle.green, emoji=leftarrow))
+        paginator.add_button(pages.PaginatorButton("prev", style=discord.ButtonStyle.green, emoji=rightarrow))
+        paginator.add_button(pages.PaginatorButton("first", style=discord.ButtonStyle.blurple, emoji=leftarrow1))
+        paginator.add_button(pages.PaginatorButton("last", style=discord.ButtonStyle.blurple, emoji=rightarrow1))
+        await paginator.send(ctx)
 
 @bot.command()
 async def pl(ctx):
