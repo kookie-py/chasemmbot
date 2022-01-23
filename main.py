@@ -1162,10 +1162,13 @@ class Trades(discord.ui.View):
 
       for emi in interaction.message.embeds:
           adaa = int(emi.title.split("|")[0])
-          tradeid_1 = int(emi.title.split("|")[0]) - 1
+          numberrr = int(emi.title.split("|")[0]) - 1
           emi.description+=f"\n**<:approve:863985290602479627> Trade Accepted <:approve:863985290602479627>**"
           emi.color = 0x57F288
-        
+          
+      tradeslist = session.get(f"https://trades.roblox.com/v1/trades/Inbound?sortOrder=Asc&limit=10")
+      tradeid_1 = tradeslist.json()["data"][numberrr]["id"]
+      
       Request = session.post(f"https://trades.roblox.com/v1/trades/{tradeid_1}/decline")
       if (Request.status_code == 200):
           for child in self.children:
@@ -1278,10 +1281,13 @@ class Trades(discord.ui.View):
       
       for emi in interaction.message.embeds:
         adaa = int(emi.title.split("|")[0])
-        tradeid_1 = int(emi.title.split("|")[0]) - 1
+        numberrr = int(emi.title.split("|")[0]) - 1
         emi.description+=f"\n**<:deny:863985438503206922> Trade Declined <:deny:863985438503206922>**"
         emi.color = 0xED4245
-          
+        
+      tradeslist = session.get(f"https://trades.roblox.com/v1/trades/Inbound?sortOrder=Asc&limit=10")
+      tradeid_1 = tradeslist.json()["data"][numberrr]["id"]
+      
       Request = session.post(f"https://trades.roblox.com/v1/trades/{tradeid_1}/decline")
       if (Request.status_code == 200):
           for child in self.children:
