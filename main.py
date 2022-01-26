@@ -1503,7 +1503,7 @@ async def pl(ctx):
 
       embed = discord.Embed(title="Profile Lookup", color=maincolor)
       embed.add_field(name="Account Username", value=f"{rbx_name}", inline=False)
-      embed.add_field(name="Profile Links", value=f"[Trade Me](https://www.roblox.com/users/{rbx_userID}/profile) | [ROBLOX Profile](https://roblox.com/users/{rbx_userID}/trade)", inline=False)
+      embed.add_field(name="Profile Links", value=f"[Trade Me](https://www.roblox.com/users/{rbx_userID}/trade) | [ROBLOX Profile](https://roblox.com/users/{rbx_userID}/profile)", inline=False)
       embed.set_thumbnail(url=avatar_0)
       await ctx.reply(embed=embed)
 
