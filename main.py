@@ -96,27 +96,10 @@ bot.load_extension("jishaku")
 @bot.event
 async def on_ready():
   print(f"Connected To Discord User: {bot.user.name}#{bot.user.discriminator}")
-  t_channel = bot.get_channel(918146416747102249)
-  t_msg = await t_channel.fetch_message(934164062324031529)
-  view = Tickets1()
-  await t_msg.edit(view=view)
   
-  view2 = Closed_Msgs()
-  db = mysql.connector.connect(
-    host="remotemysql.com",
-    user="XPJ9qhFktO",
-    passwd="lXPOlT66Pt",
-    database="XPJ9qhFktO")
-  mycursor = db.cursor()
-  mycursor.execute(f"SELECT * FROM closed_msgs")
-  try:
-    for i in mycursor:
-      msg = await bot.get_channel(int(i[1])).fetch_message(int(i[0]))
-      await msg.edit(view=view2)
-  except NotFound:
-    pass
-  except AttributeError:
-    pass
+  bot.add_view(Tickets1())
+  bot.add_view(Closed_Msgs())
+  bot.add_view(Tickets1_off())
 
 class Tickets1_off(discord.ui.View):
   def __init__(self):
