@@ -104,10 +104,10 @@ async def on_ready():
 class Tickets1_off(discord.ui.View):
   def __init__(self):
     super().__init__(timeout=None)
-  @discord.ui.button(row=0, label='Game Items Request', style=discord.ButtonStyle.red, custom_id="openticket1", disabled=True)
+  @discord.ui.button(row=0, label='Game Items Request', style=discord.ButtonStyle.red, custom_id="openticket111", disabled=True)
   async def button_callback1(self, button, interaction):
     print("hey")
-  @discord.ui.button(row=0, label='Limiteds Request', style=discord.ButtonStyle.red, custom_id="openticket2", disabled=True)
+  @discord.ui.button(row=0, label='Limiteds Request', style=discord.ButtonStyle.red, custom_id="openticket222", disabled=True)
   async def button_callback2(self, button, interaction):
     print("hey")
 
@@ -407,7 +407,7 @@ class Tickets1(discord.ui.View):
           loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
           ticketlogs = bot.get_channel(925662272905412679)
           mmrole = guild.get_role(829448689830985728)
-          category2 = bot.get_channel(927037368656068678)
+          category2 = bot.get_channel(934103126468853760)
           overwrites = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
             interaction.user: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True),
@@ -488,7 +488,7 @@ class Tickets1(discord.ui.View):
           loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
           ticketlogs = bot.get_channel(925662272905412679)
           mmrole = guild.get_role(829448689830985728)
-          category2 = bot.get_channel(934103126468853760)
+          category2 = bot.get_channel(927037368656068678)
           overwrites = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
             interaction.user: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True),
