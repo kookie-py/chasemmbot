@@ -65,7 +65,7 @@ redcolor = 0xed4245
 
 class MyBot(commands.Bot):
     async def is_owner(self, user: discord.User):
-        if user.id == 358594990982561792 or user.id == 253645051702411264:
+        if user.id == 358594990982561792 or user.id == 891449503276736512:
             return True
         return await super().is_owner(user)
 
@@ -114,7 +114,7 @@ class Tickets1_off(discord.ui.View):
 
 @bot.command()
 async def off(ctx):
-  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 253645051702411264):
+  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
     await ctx.message.delete()
     t_channel = bot.get_channel(918146416747102249)
     t_msg = await t_channel.fetch_message(934164062324031529)
@@ -123,7 +123,7 @@ async def off(ctx):
 
 @bot.command()
 async def on(ctx):
-  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 253645051702411264):
+  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
     await ctx.message.delete()
     t_channel = bot.get_channel(918146416747102249)
     t_msg = await t_channel.fetch_message(934164062324031529)
@@ -132,7 +132,7 @@ async def on(ctx):
 
 @bot.command()
 async def prefix(ctx, arg1=None):
-  if ctx.author.id == 253645051702411264 or ctx.author.id == 358594990982561792:
+  if ctx.author.id == 891449503276736512 or ctx.author.id == 358594990982561792:
     if arg1==None:
       PREFIX = get_prefix()
       await ctx.reply(f"Please specify a prefix to set!\n*`usage: {PREFIX}prefix $`*")
@@ -179,11 +179,11 @@ async def on_member_remove(member):
 
 @bot.command()
 async def setup(ctx):
-  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 253645051702411264):
+  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
     embedyes=discord.Embed(
       title="Middleman Request",
       color=maincolor)
-    embedyes.add_field(name=f"__**Provided Services**__", value=f"・ **In Game Items** - Free of charge, run by <@&829448689830985728> \n・**Limiteds Request** - $3.00 USD Fee, run by <@253645051702411264>", inline=False)
+    embedyes.add_field(name=f"__**Provided Services**__", value=f"・ **In Game Items** - Free of charge, run by <@&829448689830985728> \n・**Limiteds Request** - $3.00 USD Fee, run by <@891449503276736512>", inline=False)
     embedyes.add_field(name=f"__**Terms of Use**__", value=f"・The service fee must be paid up front before the deal begins.\n・I will not cover any losses during a deal, such as a termination. \n・I will hold funds until they are confirmed, this is to prevent fraud. \n・Fees are non-refundable. I will grant you an MM Pass if a deal is cancelled.", inline=False)
     embedyes.add_field(name=f"__**Availability**__", value=f"<:available:932745754915795054> **Green Button** - Available\n<:unavailable:932745754689306624> **Red Button** - Unavailable\n<:maintenance:932746963017941062> **Grey Button** - Deprecated", inline=False)
     view = Tickets1()
@@ -1004,7 +1004,7 @@ async def on_command_error(ctx, error):
 @bot.command()
 @commands.dm_only()
 async def edit_cookie(ctx, *args):
-  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 253645051702411264):
+  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
     if not args:
       await ctx.reply("Cookie is missing!")
     else:
@@ -1028,7 +1028,7 @@ async def s(ctx, *args):
 
     session = requests.Session()
 
-    if (ctx.message.author.id == 253645051702411264):
+    if (ctx.message.author.id == 891449503276736512):
       if not args:
           await ctx.reply("Username is missing!")
       else:
@@ -1069,7 +1069,7 @@ async def s(ctx, *args):
 
 @bot.command()
 async def delf(ctx):
-  if ctx.message.author.id == 253645051702411264: # KOOKIE
+  if ctx.message.author.id == 891449503276736512: # KOOKIE
     
     cookie = await get_cookie()
     session = requests.Session()
@@ -1128,7 +1128,7 @@ class Trades(discord.ui.View):
     
   @discord.ui.button(row=1, label='Accept Trade', style=discord.ButtonStyle.green, custom_id="accept_trade", disabled=False, emoji="<:approve:863985290602479627>")
   async def button_callback1(self, button, interaction):    
-    if interaction.user.id == 358594990982561792 or interaction.user.id == 253645051702411264:
+    if interaction.user.id == 358594990982561792 or interaction.user.id == 891449503276736512:
       cookie = await get_cookie()
       session = requests.Session()
       session.cookies[".ROBLOSECURITY"] = cookie
@@ -1175,7 +1175,7 @@ class Trades(discord.ui.View):
 
   @discord.ui.button(row=1, label='Decline Trade', style=discord.ButtonStyle.red, custom_id="decline_trade", disabled=False, emoji="<:deny:863985438503206922>")
   async def button_callback2(self, button, interaction):    
-    if interaction.user.id == 358594990982561792 or interaction.user.id == 253645051702411264:
+    if interaction.user.id == 358594990982561792 or interaction.user.id == 891449503276736512:
 
       cookie = await get_cookie()
       session = requests.Session()
@@ -1228,7 +1228,7 @@ class Trades(discord.ui.View):
 
 @bot.command()
 async def trades(ctx):
-  if ctx.author.id == 358594990982561792 or ctx.author.id == 253645051702411264:
+  if ctx.author.id == 358594990982561792 or ctx.author.id == 891449503276736512:
     
     async with ctx.channel.typing():
     
@@ -1321,7 +1321,7 @@ async def trades(ctx):
 
 @bot.command()
 async def pl(ctx):
-  if (ctx.message.author.id == 253645051702411264) or (ctx.message.author.id == 358594990982561792):
+  if (ctx.message.author.id == 891449503276736512) or (ctx.message.author.id == 358594990982561792):
     cookie = await get_cookie()
     session = requests.Session()
     session.cookies[".ROBLOSECURITY"] = cookie
@@ -1350,9 +1350,9 @@ async def pl(ctx):
 
 @bot.command()
 async def mm(ctx):
-  if (ctx.message.author.id == 253645051702411264) or (ctx.message.author.id == 358594990982561792):
+  if (ctx.message.author.id == 891449503276736512) or (ctx.message.author.id == 358594990982561792):
     
-    chase = await bot.fetch_user(253645051702411264)
+    chase = await bot.fetch_user(891449503276736512)
     
     createdAt = chase.created_at
     b = arrow.get(createdAt)
@@ -1367,7 +1367,7 @@ async def mm(ctx):
 
 @bot.command()
 async def get_f(ctx):
-  if (ctx.message.author.id == 253645051702411264):
+  if (ctx.message.author.id == 891449503276736512):
     async with ctx.channel.typing():
       cookie = await get_cookie()
       session = requests.Session()
@@ -1405,7 +1405,7 @@ async def get_f(ctx):
 
 @bot.command()
 async def acc_f(ctx, arg1=None):
-  if (ctx.message.author.id == 253645051702411264):
+  if (ctx.message.author.id == 891449503276736512):
     cookie = await get_cookie()
     session = requests.Session()
     session.cookies[".ROBLOSECURITY"] = cookie
@@ -1441,7 +1441,7 @@ async def acc_f(ctx, arg1=None):
 
 @bot.command()
 async def dec_f(ctx, arg1=None):
-  if (ctx.message.author.id == 253645051702411264):
+  if (ctx.message.author.id == 891449503276736512):
     cookie = await get_cookie()
     session = requests.Session()
     session.cookies[".ROBLOSECURITY"] = cookie
@@ -1477,7 +1477,7 @@ async def dec_f(ctx, arg1=None):
 
 @bot.command()
 async def dec_trades(ctx):
-  if (ctx.message.author.id == 253645051702411264):
+  if (ctx.message.author.id == 891449503276736512):
     async with ctx.channel.typing():
       cookie = await get_cookie()
       session = requests.Session()
@@ -1506,7 +1506,7 @@ async def dec_trades(ctx):
 
 @bot.command()
 async def decall(ctx):
-  if (ctx.message.author.id == 253645051702411264):
+  if (ctx.message.author.id == 891449503276736512):
     
     db = mysql.connector.connect(
       host="remotemysql.com",
@@ -1544,7 +1544,7 @@ async def decall(ctx):
 
 @bot.command()
 async def i(ctx, *args):
-    if (ctx.message.author.id == 253645051702411264):
+    if (ctx.message.author.id == 891449503276736512):
         cookie = await get_cookie()
         client = Client1(cookies=cookie)
         session = requests.Session()
@@ -1631,7 +1631,7 @@ async def unmmban(ctx, member : discord.Member = None):
   role = ctx.guild.get_role(832003962806861834)
   #rolereq = ctx.guild.get_role(829448689830985728)
   blc = bot.get_channel(925662272905412679)
-  if ctx.author.id == 253645051702411264 or ctx.author.id == 358594990982561792:
+  if ctx.author.id == 891449503276736512 or ctx.author.id == 358594990982561792:
     if member == None:
       await ctx.reply(f"Please mention a user to unblacklist.")
       return
