@@ -195,7 +195,7 @@ async def get_cookie():
   chaid2 = bot.get_channel(chaid1.id)
   msgs1 = await chaid2.history(limit=None).flatten()
   for msg in msgs1:
-    if msg.id == 934130220112437298:
+    if msg.id == 941765713117454428:
       msgcontent = msg.content
   cookie = msgcontent
   return cookie
@@ -1014,7 +1014,7 @@ async def edit_cookie(ctx, *args):
       chaid = bot.get_channel(channel.id)
       msgs = await chaid.history(limit=None).flatten()
       for msg in msgs:
-        if msg.id == 934130220112437298:
+        if msg.id == 941765713117454428:
           await msg.edit(cookie)
       msg1 = await ctx.reply("Cookie was successfully edited.")
       await asyncio.sleep(10)
