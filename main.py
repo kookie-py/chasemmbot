@@ -1156,8 +1156,8 @@ class Trades(discord.ui.View):
       if (Request.status_code == 200):
           for child in self.children:
             child.disabled = True 
-            await interaction.message.edit(view=None, embed=emi)
-            await interaction.message.reply(embed=discord.Embed(description=f"*Trade `{adaa}` Accepted*", color=0x57F288))
+          await interaction.message.edit(view=None, embed=emi)
+          await interaction.message.reply(embed=discord.Embed(description=f"*Trade `{adaa}` Accepted*", color=0x57F288))
       elif (Request.status_code == 401):
         await interaction.message.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
         await interaction.response.defer()
@@ -1204,8 +1204,8 @@ class Trades(discord.ui.View):
       if (Request.status_code == 200):
           for child in self.children:
             child.disabled = True 
-            await interaction.message.edit(view=None, embed=emi)
-            await interaction.message.reply(embed=discord.Embed(description=f"*Trade `{adaa}` Declined*", color=0xED4245))
+          await interaction.message.edit(view=None, embed=emi)
+          await interaction.message.reply(embed=discord.Embed(description=f"*Trade `{adaa}` Declined*", color=0xED4245))
       elif (Request.status_code == 401):
         await interaction.message.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
         await interaction.response.defer()
