@@ -84,7 +84,7 @@ def get_prefix():
 def perChaseage(part, whole):
   return round(100 * float(part)/float(whole), 2)
 
-TOKEN = "Nzg4MjM4ODg5NDE1NjA2MzIy.X9gmrA.8MSJlUxgPqvNld3OkLh70Jtix7o"
+TOKEN = "OTQxMTk1NTMyODU1MDQyMDc4.YgSapQ.9FxYA-TGU4S9Sw8sgvVt05Elj_s"
 
 intents = discord.Intents.all()
 intents.members = True
@@ -117,7 +117,7 @@ async def off(ctx):
   if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
     await ctx.message.delete()
     t_channel = bot.get_channel(918146416747102249)
-    t_msg = await t_channel.fetch_message(934164062324031529)
+    t_msg = await t_channel.fetch_message(941679320508825610)
     view = Tickets1_off()
     await t_msg.edit(view=view)
 
@@ -126,7 +126,7 @@ async def on(ctx):
   if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
     await ctx.message.delete()
     t_channel = bot.get_channel(918146416747102249)
-    t_msg = await t_channel.fetch_message(934164062324031529)
+    t_msg = await t_channel.fetch_message(941679320508825610)
     view = Tickets1()
     await t_msg.edit(view=view)
 
