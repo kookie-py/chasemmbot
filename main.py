@@ -1152,7 +1152,7 @@ class Trades(discord.ui.View):
       tradeslist = session.get(f"https://trades.roblox.com/v1/trades/Inbound?sortOrder=Asc&limit=10")
       tradeid_1 = tradeslist.json()["data"][numberrr]["id"]
       
-      Request = session.post(f"https://trades.roblox.com/v1/trades/{tradeid_1}/decline")
+      Request = session.post(f"https://trades.roblox.com/v1/trades/{tradeid_1}/accept")
       if (Request.status_code == 200):
           for child in self.children:
             child.disabled = True 
