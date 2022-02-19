@@ -183,7 +183,7 @@ async def setup(ctx):
     embedyes=discord.Embed(
       title="Middleman Request",
       color=maincolor)
-    embedyes.add_field(name=f"__**Provided Services**__", value=f"・ **In Game Items** - Free of charge, run by <@&829448689830985728> \n・**Limiteds Request** - $3.00 USD Fee, run by <@891449503276736512>", inline=False)
+    embedyes.add_field(name=f"__**Provided Services**__", value=f"・ **In Game Items** - Free of charge, run by <@&944100142607384586> \n・**Limiteds Request** - $3.00 USD Fee, run by <@891449503276736512>", inline=False)
     embedyes.add_field(name=f"__**Terms of Use**__", value=f"・The service fee must be paid up front before the deal begins.\n・I will not cover any losses during a deal, such as a termination. \n・I will hold funds until they are confirmed, this is to prevent fraud. \n・Fees are non-refundable. I will grant you an MM Pass if a deal is cancelled.", inline=False)
     embedyes.add_field(name=f"__**Availability**__", value=f"<:available:932745754915795054> **Green Button** - Available\n<:unavailable:932745754689306624> **Red Button** - Unavailable\n<:maintenance:932746963017941062> **Grey Button** - Deprecated", inline=False)
     view = Tickets1()
@@ -406,7 +406,7 @@ class Tickets1(discord.ui.View):
           loading_embed = discord.Embed(color = 0xffffff)
           loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
           ticketlogs = bot.get_channel(925662272905412679)
-          mmrole = guild.get_role(829448689830985728)
+          mmrole = guild.get_role(944100142607384586)
           #category2 = bot.get_channel(934103126468853760)
           overwrites = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
@@ -487,7 +487,7 @@ class Tickets1(discord.ui.View):
           loading_embed = discord.Embed(color = 0xffffff)
           loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
           ticketlogs = bot.get_channel(925662272905412679)
-          mmrole = guild.get_role(829448689830985728)
+          mmrole = guild.get_role(944100142607384586)
           #category2 = bot.get_channel(927037368656068678)
           overwrites = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
@@ -526,7 +526,7 @@ class Tickets1(discord.ui.View):
 
 @bot.command()
 async def remove(ctx, user : discord.Member):  
-  rolereq = ctx.guild.get_role(829448689830985728)
+  rolereq = ctx.guild.get_role(944100142607384586)
   ticketlogs = bot.get_channel(925662272905412679)
   if rolereq in ctx.author.roles or ctx.author.id==358594990982561792:
     
@@ -578,7 +578,7 @@ async def remove(ctx, user : discord.Member):
 @commands.cooldown(1, 10, commands.BucketType.channel)
 async def delete(ctx):
   users={}
-  rolereq = ctx.guild.get_role(829448689830985728)
+  rolereq = ctx.guild.get_role(944100142607384586)
   ticketlogs = bot.get_channel(925662272905412679)
   transcripts = bot.get_channel(925662272905412679)
   Status = True
@@ -655,7 +655,7 @@ async def delete(ctx):
 
 @bot.command()
 async def rename(ctx, *args):
-  rolereq = ctx.guild.get_role(829448689830985728)
+  rolereq = ctx.guild.get_role(944100142607384586)
   if (rolereq in ctx.author.roles) or ctx.author.id==358594990982561792:
     
     db = mysql.connector.connect(
@@ -682,7 +682,7 @@ async def rename(ctx, *args):
 @bot.command()
 @commands.cooldown(1, 10, commands.BucketType.channel)
 async def close(ctx):
-  rolereq = ctx.guild.get_role(829448689830985728)
+  rolereq = ctx.guild.get_role(944100142607384586)
   if rolereq in ctx.author.roles or ctx.author.id==358594990982561792:
     async with ctx.channel.typing():
       db = mysql.connector.connect(
@@ -732,7 +732,7 @@ async def close(ctx):
 @bot.command()
 @commands.cooldown(1, 10, commands.BucketType.channel)
 async def reopen(ctx):
-  rolereq = ctx.guild.get_role(829448689830985728)
+  rolereq = ctx.guild.get_role(944100142607384586)
   guild = bot.get_guild(713213895073857548)
   ticketlogs = bot.get_channel(925662272905412679)
   if rolereq in ctx.author.roles or ctx.author.id==358594990982561792:
@@ -814,7 +814,7 @@ async def remove_error(ctx, error):
 async def on_message(message):
   try:
     role = message.guild.get_role(832003962806861834)
-    rolereq = message.guild.get_role(829448689830985728)
+    rolereq = message.guild.get_role(944100142607384586)
     ticketlogs = bot.get_channel(925662272905412679)
     if (rolereq in message.author.roles):
       
@@ -945,7 +945,7 @@ async def on_message(message):
 @bot.command()
 async def transcript(ctx):
   users={}
-  rolereq = ctx.guild.get_role(829448689830985728)
+  rolereq = ctx.guild.get_role(944100142607384586)
   ticketlogs = bot.get_channel(925662272905412679)
   transcripts = bot.get_channel(925662272905412679)
   loading_embed = discord.Embed(title="Ticket Saved", description=f"All ticket information has been saved to **<#925662272905412679>**.",color = maincolor)
@@ -1601,7 +1601,7 @@ async def on_guild_channel_delete(channel):
 @bot.command()
 async def mmban(ctx, member : discord.Member = None):
   role = ctx.guild.get_role(832003962806861834)
-  rolereq = ctx.guild.get_role(829448689830985728)
+  rolereq = ctx.guild.get_role(944100142607384586)
   blc = bot.get_channel(925662272905412679)
   PREFIX = get_prefix()
   if (rolereq in ctx.author.roles) or ctx.author.id==358594990982561792:
@@ -1629,7 +1629,7 @@ async def mmban(ctx, member : discord.Member = None):
 @bot.command()
 async def unmmban(ctx, member : discord.Member = None):
   role = ctx.guild.get_role(832003962806861834)
-  #rolereq = ctx.guild.get_role(829448689830985728)
+  #rolereq = ctx.guild.get_role(944100142607384586)
   blc = bot.get_channel(925662272905412679)
   if ctx.author.id == 891449503276736512 or ctx.author.id == 358594990982561792:
     if member == None:
