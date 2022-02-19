@@ -407,13 +407,13 @@ class Tickets1(discord.ui.View):
           loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
           ticketlogs = bot.get_channel(925662272905412679)
           mmrole = guild.get_role(829448689830985728)
-          category2 = bot.get_channel(934103126468853760)
+          #category2 = bot.get_channel(934103126468853760)
           overwrites = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
             interaction.user: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True),
             mmrole: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
           }
-          channel = await guild.create_text_channel(f"mm-{interaction.user.name}", topic=f"Chase's MM Service | {interaction.user.id}", category=category2, overwrites=overwrites)
+          channel = await guild.create_text_channel(f"mm-{interaction.user.name}", topic=f"Chase's MM Service | {interaction.user.id}", overwrites=overwrites)
           await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
           mycursor.execute("INSERT INTO t_status (channelID, status) VALUES (%s, %s)", (channel.id, "Open"))
           mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
@@ -431,7 +431,7 @@ class Tickets1(discord.ui.View):
           await ticketlogs.send(embed=logembed)
           embed = discord.Embed(title="Middleman Request", description=f"You've successfully opened a Middleman Request.\nPlease wait for the Middleman to view this ticket, don't ping them.\n\n**While You're Waiting**\n・State who you're trading with.\n・State what you're trading.\n・Invite the other trader if they're not here.",color=maincolor)
           embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user}')
-          await channel.send(f"{interaction.user.mention}, @here", embed=embed)
+          await channel.send(f"{interaction.user.mention}, @ here", embed=embed)
     except mysql.connector.errors.InternalError:
       db = mysql.connector.connect(
         host="remotemysql.com",
@@ -488,13 +488,13 @@ class Tickets1(discord.ui.View):
           loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
           ticketlogs = bot.get_channel(925662272905412679)
           mmrole = guild.get_role(829448689830985728)
-          category2 = bot.get_channel(927037368656068678)
+          #category2 = bot.get_channel(927037368656068678)
           overwrites = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
             interaction.user: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True),
             mmrole: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
           }
-          channel = await guild.create_text_channel(f"mm-{interaction.user.name}", topic=f"Chase's MM Service | {interaction.user.id}", category=category2, overwrites=overwrites)
+          channel = await guild.create_text_channel(f"mm-{interaction.user.name}", topic=f"Chase's MM Service | {interaction.user.id}", overwrites=overwrites)
           await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
           mycursor.execute("INSERT INTO t_status (channelID, status) VALUES (%s, %s)", (channel.id, "Open"))
           mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
@@ -512,7 +512,7 @@ class Tickets1(discord.ui.View):
           await ticketlogs.send(embed=logembed)
           embed = discord.Embed(title="Middleman Request", description=f"You've successfully opened a Middleman Request.\nPlease wait for the Middleman to view this ticket, don't ping them.\n\n**While You're Waiting**\n・State who you're trading with.\n・State what you're trading.\n・Invite the other trader if they're not here.",color=maincolor)
           embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user}')
-          await channel.send(f"{interaction.user.mention}, @here", embed=embed)
+          await channel.send(f"{interaction.user.mention}, @ here", embed=embed)
     except mysql.connector.errors.InternalError:
       db = mysql.connector.connect(
         host="remotemysql.com",
