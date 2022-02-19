@@ -407,13 +407,13 @@ class Tickets1(discord.ui.View):
           loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
           ticketlogs = bot.get_channel(925662272905412679)
           mmrole = guild.get_role(944100142607384586)
-          #category2 = bot.get_channel(934103126468853760)
+          category2 = bot.get_channel(934103126468853760)
           overwrites = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
             interaction.user: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True),
             mmrole: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
           }
-          channel = await guild.create_text_channel(f"mm-{interaction.user.name}", topic=f"Chase's MM Service | {interaction.user.id}", overwrites=overwrites)
+          channel = await guild.create_text_channel(f"mm-{interaction.user.name}", topic=f"Chase's MM Service | {interaction.user.id}", category=category2, overwrites=overwrites)
           await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
           mycursor.execute("INSERT INTO t_status (channelID, status) VALUES (%s, %s)", (channel.id, "Open"))
           mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
@@ -488,13 +488,13 @@ class Tickets1(discord.ui.View):
           loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
           ticketlogs = bot.get_channel(925662272905412679)
           mmrole = guild.get_role(944100142607384586)
-          #category2 = bot.get_channel(927037368656068678)
+          category2 = bot.get_channel(927037368656068678)
           overwrites = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
             interaction.user: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True),
             mmrole: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
           }
-          channel = await guild.create_text_channel(f"mm-{interaction.user.name}", topic=f"Chase's MM Service | {interaction.user.id}", overwrites=overwrites)
+          channel = await guild.create_text_channel(f"mm-{interaction.user.name}", topic=f"Chase's MM Service | {interaction.user.id}", category=category2, overwrites=overwrites)
           await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
           mycursor.execute("INSERT INTO t_status (channelID, status) VALUES (%s, %s)", (channel.id, "Open"))
           mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
