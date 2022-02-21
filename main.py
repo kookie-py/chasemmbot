@@ -431,7 +431,7 @@ class Tickets1(discord.ui.View):
           await ticketlogs.send(embed=logembed)
           embed = discord.Embed(title="Middleman Request", description=f"You've successfully opened a Middleman Request.\nPlease wait for the Middleman to view this ticket, don't ping them.\n\n**While You're Waiting**\n・State who you're trading with.\n・State what you're trading.\n・Invite the other trader if they're not here.",color=maincolor)
           embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user}')
-          await channel.send(f"{interaction.user.mention}, @ here", embed=embed)
+          await channel.send(f"{interaction.user.mention}, @here", embed=embed)
     except mysql.connector.errors.InternalError:
       db = mysql.connector.connect(
         host="remotemysql.com",
@@ -512,7 +512,7 @@ class Tickets1(discord.ui.View):
           await ticketlogs.send(embed=logembed)
           embed = discord.Embed(title="Middleman Request", description=f"You've successfully opened a Middleman Request.\nPlease wait for the Middleman to view this ticket, don't ping them.\n\n**While You're Waiting**\n・State who you're trading with.\n・State what you're trading.\n・Invite the other trader if they're not here.",color=maincolor)
           embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user}')
-          await channel.send(f"{interaction.user.mention}, @ here", embed=embed)
+          await channel.send(f"{interaction.user.mention}, @here", embed=embed)
     except mysql.connector.errors.InternalError:
       db = mysql.connector.connect(
         host="remotemysql.com",
