@@ -1653,4 +1653,16 @@ async def unmmban(ctx, member : discord.Member = None):
   else:
     await ctx.reply("You can't use this.")
 
+@bot.command()
+async def lim(ctx):
+  price = 1234567890
+  for limited in requests.get('https://catalog.roblox.com/v1/search/items/details?category=Collectibles&limit=30&sortType=4&subcategory=Collectibles').json()['data']:
+    if int(limited['lowestPrice']) < price:
+      price = int(limited['lowestPrice'])
+      info = limited
+  embed = discord.Embed(title=f"**Cheapest limited**", description=f"__name__: `{info['name']}`\n__price__: `{price} ROBUX`\n__link__: https://www.roblox.com/catalog/{info['id']}", color=maincolor)
+  embed.set_thumbnail(url=f'https://www.roblox.com/asset-thumbnail/image?assetId={info["id"]}&width=420&height=420&format=png')
+  await ctx.reply(embed=embed)
+
+
 bot.run(TOKEN)
