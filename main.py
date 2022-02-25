@@ -1660,7 +1660,7 @@ async def lim(ctx):
     if int(limited['lowestPrice']) < price:
       price = int(limited['lowestPrice'])
       info = limited
-  embed = discord.Embed(title=f"{info['name']}", description=f"[Click here to purchase!(https://www.roblox.com/catalog/{info['id']})]", color=maincolor)
+  embed = discord.Embed(title=f"{info['name']}", description=f"[Click here to purchase!](https://www.roblox.com/catalog/{info['id']})", color=maincolor)
   embed.add_field(name="R$", value=price)
   embed.set_thumbnail(url=f'https://www.roblox.com/asset-thumbnail/image?assetId={info["id"]}&width=420&height=420&format=png')
   await ctx.reply(embed=embed)
