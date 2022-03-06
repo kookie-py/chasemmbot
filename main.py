@@ -117,18 +117,30 @@ async def off(ctx):
   if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
     await ctx.message.delete()
     t_channel = bot.get_channel(918146416747102249)
-    t_msg = await t_channel.fetch_message(950070550603108352)
-    view = Tickets1_off()
-    await t_msg.edit(view=view)
+    msgs = await t_channel.history(limit=None).flatten()
+    for i in msgs:
+      if i.components != None:
+        for ii in i.components:
+          if ii.children != None:
+            for iii in ii.children:
+              if (iii.custom_id == "openticket") or (iii.custom_id == "openticket2") or (iii.custom_id == "openticket111") or (iii.custom_id == "openticket222"):
+                view = Tickets1_off()
+                await i.edit(view=view)
 
 @bot.command()
 async def on(ctx):
   if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
     await ctx.message.delete()
     t_channel = bot.get_channel(918146416747102249)
-    t_msg = await t_channel.fetch_message(950070550603108352)
-    view = Tickets1()
-    await t_msg.edit(view=view)
+    msgs = await t_channel.history(limit=None).flatten()
+    for i in msgs:
+      if i.components != None:
+        for ii in i.components:
+          if ii.children != None:
+            for iii in ii.children:
+              if (iii.custom_id == "openticket") or (iii.custom_id == "openticket2") or (iii.custom_id == "openticket111") or (iii.custom_id == "openticket222"):
+                view = Tickets1()
+                await i.edit(view=view)
 
 @bot.command()
 async def prefix(ctx, arg1=None):
