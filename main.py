@@ -151,7 +151,7 @@ async def prefix(ctx, arg1=None):
     else:
       
       
-      async with ctx.channel.typing():
+      #async with ctx.channel.typing():
       
         db = mysql.connector.connect(
           host="remotemysql.com",
@@ -166,7 +166,7 @@ async def prefix(ctx, arg1=None):
         bot.command_prefix = str(arg1)
         
         embed = discord.Embed(title="Prefix Changed", description=f"The prefix has been changed to `{arg1}`", color=maincolor)
-      await ctx.reply(embed=embed)
+        await ctx.reply(embed=embed)
 
 @bot.event
 async def on_member_remove(member):
@@ -217,7 +217,7 @@ class Closed_Msgs(discord.ui.View):
     super().__init__(timeout=None)
   @discord.ui.button(row=0, label='Delete', style=discord.ButtonStyle.red, custom_id="deleteticket", disabled=False, emoji="<:deny:863985438503206922>")
   async def button_callback1(self, button, interaction):
-    async with interaction.channel.typing():
+    #async with interaction.channel.typing():
       transcripts = bot.get_channel(925662272905412679)
       guild = bot.get_guild(713213895073857548)
       ticketlogs = bot.get_channel(925662272905412679)
@@ -289,7 +289,7 @@ class Closed_Msgs(discord.ui.View):
         await interaction.channel.delete()
   @discord.ui.button(row=0, label='Reopen', style=discord.ButtonStyle.grey, custom_id="reopenticket", disabled=False, emoji="<:cancel:881774578035228703>")
   async def button_callback2(self, button, interaction):
-    async with interaction.channel.typing():
+    #async with interaction.channel.typing():
       await interaction.response.defer()
       transcripts = bot.get_channel(925662272905412679)
       loading_embed = discord.Embed(color = 0xffffff)
@@ -326,7 +326,7 @@ class Closed_Msgs(discord.ui.View):
       db.close()
   @discord.ui.button(row=0, label='Save Transcript', style=discord.ButtonStyle.blurple, custom_id="savets", disabled=False, emoji="<:save:889899650549706834>")
   async def button_callback3(self, button, interaction):
-    async with interaction.channel.typing():
+    #async with interaction.channel.typing():
       transcripts = bot.get_channel(925662272905412679)
       loading_embed = discord.Embed(color = 0xffffff)
       loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
@@ -368,7 +368,7 @@ class Closed_Msgs(discord.ui.View):
       await mess.edit(embed=transcriptembed.add_field(name="**Direct Transcript**", value=f"[Direct Transcript](https://tickettool.xyz/direct?url={attachment.url})", inline=True))
       await mess.edit(embed=transcriptembed.add_field(name="**Users in transcript**", value=f"{user_string}", inline=True))
       loading_embed1 = discord.Embed(title="Ticket Saved", description=f"All ticket information has been saved to **<#925662272905412679>**.",color = maincolor)
-    await interaction.edit_original_message(content=f"{interaction.user.mention}", embed=loading_embed1)
+      await interaction.edit_original_message(content=f"{interaction.user.mention}", embed=loading_embed1)
 
 class Tickets1(discord.ui.View):
   def __init__(self):
@@ -560,7 +560,7 @@ async def remove(ctx, user : discord.Member):
         return
       else:
         
-        async with ctx.channel.typing():
+        #async with ctx.channel.typing():
         
           Toggle = True
           mycursor.execute(f"SELECT status FROM t_status WHERE channelID = '{ctx.channel.id}'")
@@ -595,7 +595,7 @@ async def delete(ctx):
   transcripts = bot.get_channel(925662272905412679)
   Status = True
   if (rolereq in ctx.author.roles) or ctx.author.id==358594990982561792:
-    async with ctx.channel.typing():
+    #async with ctx.channel.typing():
       db = mysql.connector.connect(
         host="remotemysql.com",
         user="XPJ9qhFktO",
@@ -682,7 +682,7 @@ async def rename(ctx, *args):
       await ctx.reply("This channel isn't a ticket.")
       return
     else:
-      async with ctx.channel.typing():
+      #async with ctx.channel.typing():
         ticketlogs = bot.get_channel(925662272905412679)
         #orgname = ctx.channel.name
         await ctx.channel.edit(name=f"{args}")
@@ -696,7 +696,7 @@ async def rename(ctx, *args):
 async def close(ctx):
   rolereq = ctx.guild.get_role(944100142607384586)
   if rolereq in ctx.author.roles or ctx.author.id==358594990982561792:
-    async with ctx.channel.typing():
+    #async with ctx.channel.typing():
       db = mysql.connector.connect(
         host="remotemysql.com",
         user="XPJ9qhFktO",
@@ -772,7 +772,7 @@ async def reopen(ctx):
               mycursor.close()
               return
           if Toggle == True:
-            async with ctx.channel.typing():
+            #async with ctx.channel.typing():
               mycursor.execute(f"SELECT msgID FROM closed_msgs WHERE channelID = '{ctx.channel.id}'")
               for i in mycursor:
                 closed_msg = await ctx.channel.fetch_message(int(i[0]))
@@ -844,7 +844,7 @@ async def on_message(message):
           await message.reply("This channel isn't a ticket.")
           return
         else:
-          async with message.channel.typing():
+          #async with message.channel.typing():
             db = mysql.connector.connect(
               host="remotemysql.com",
               user="XPJ9qhFktO",
@@ -962,7 +962,7 @@ async def transcript(ctx):
   transcripts = bot.get_channel(925662272905412679)
   loading_embed = discord.Embed(title="Ticket Saved", description=f"All ticket information has been saved to **<#925662272905412679>**.",color = maincolor)
   if (rolereq in ctx.author.roles) or ctx.author.id==358594990982561792:
-    async with ctx.channel.typing():
+    #async with ctx.channel.typing():
       db = mysql.connector.connect(
         host="remotemysql.com",
         user="XPJ9qhFktO",
@@ -1045,7 +1045,7 @@ async def s(ctx, *args):
           await ctx.reply("Username is missing!")
       else:
         try:
-          async with ctx.channel.typing():
+          #async with ctx.channel.typing():
             session = requests.Session()
             session.cookies[".ROBLOSECURITY"] = cookie
             req = session.get(url="https://users.roblox.com/v1/users/authenticated")
@@ -1242,7 +1242,7 @@ class Trades(discord.ui.View):
 async def trades(ctx):
   if ctx.author.id == 358594990982561792 or ctx.author.id == 891449503276736512:
     
-    async with ctx.channel.typing():
+    #async with ctx.channel.typing():
     
       cookie = await get_cookie()
       session = requests.Session()
@@ -1380,7 +1380,7 @@ async def mm(ctx):
 @bot.command()
 async def get_f(ctx):
   if (ctx.message.author.id == 891449503276736512):
-    async with ctx.channel.typing():
+    #async with ctx.channel.typing():
       cookie = await get_cookie()
       session = requests.Session()
       session.cookies[".ROBLOSECURITY"] = cookie
@@ -1434,7 +1434,7 @@ async def acc_f(ctx, arg1=None):
       if arg1==None:
         await ctx.reply("Username is missing!")
       else:
-        async with ctx.channel.typing():
+        #async with ctx.channel.typing():
           data = {"usernames": arg1}
           get_user = session.post(f"https://users.roblox.com/v1/usernames/users", data=data).json()
           usernamu = get_user["data"][0]["id"]
@@ -1470,7 +1470,7 @@ async def dec_f(ctx, arg1=None):
       if arg1==None:
         await ctx.reply("Username is missing!")
       else:
-        async with ctx.channel.typing():
+        #async with ctx.channel.typing():
           data = {"usernames": arg1}
           get_user = session.post(f"https://users.roblox.com/v1/usernames/users", data=data).json()
           usernamu = get_user["data"][0]["id"]
@@ -1490,7 +1490,7 @@ async def dec_f(ctx, arg1=None):
 @bot.command()
 async def dec_trades(ctx):
   if (ctx.message.author.id == 891449503276736512):
-    async with ctx.channel.typing():
+    #async with ctx.channel.typing():
       cookie = await get_cookie()
       session = requests.Session()
       session.cookies[".ROBLOSECURITY"] = cookie
@@ -1564,7 +1564,7 @@ async def i(ctx, *args):
           await ctx.reply("Username is missing!")
         else:
           try:
-            async with ctx.channel.typing():
+            #async with ctx.channel.typing():
               user = await client.get_user_by_name(args[0])
               created_at = user.created_at
               a = arrow.get(created_at)
