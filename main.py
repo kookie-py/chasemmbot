@@ -1352,7 +1352,7 @@ async def pl(ctx):
     #  session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
     #req2 = session.post(url="https://auth.roblox.com/")
 
-    json_data = {'usernames': [user,],'excludeBannedUsers': False}
+    js = {'usernames': [user,],'excludeBannedUsers': False}
     res = session.post('https://users.roblox.com/v1/usernames/users', data=json_data)
     rbx_userID = res.json()['data'][0]['id']
     rbx_name = res.json()['data'][0]['name']
