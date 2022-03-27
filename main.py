@@ -666,30 +666,31 @@ async def delete(ctx):
           db.close()
 
 @bot.command()
+@commands.has_role(944100142607384586)
 async def rename(ctx, *args):
-  rolereq = ctx.guild.get_role(944100142607384586)
-  if (rolereq in ctx.author.roles) or ctx.author.id==358594990982561792:
+  #rolereq = ctx.guild.get_role(944100142607384586)
+  #if (rolereq in ctx.author.roles):
     
-    db = mysql.connector.connect(
-      host="remotemysql.com",
-      user="XPJ9qhFktO",
-      passwd="lXPOlT66Pt",
-      database="XPJ9qhFktO")
-    mycursor = db.cursor()
-    mycursor.execute(f"SELECT channelID FROM t_status WHERE channelID = {ctx.channel.id}")
-    data = mycursor.fetchall()
-    if len(data) == 0:
-      await ctx.reply("This channel isn't a ticket.")
-      return
-    else:
-      #async with ctx.channel.typing():
-        ticketlogs = bot.get_channel(925662272905412679)
-        #orgname = ctx.channel.name
-        await ctx.channel.edit(name=f"{args}")
-        await asyncio.sleep(1)
-        newname = ctx.channel.name
-        await ctx.channel.send(embed=discord.Embed(title="Ticket Renamed", description=f"The ticket has been renamed to **{newname}**!", color=maincolor))
-        await ctx.delete()
+  db = mysql.connector.connect(
+    host="remotemysql.com",
+    user="XPJ9qhFktO",
+    passwd="lXPOlT66Pt",
+    database="XPJ9qhFktO")
+  mycursor = db.cursor()
+  mycursor.execute(f"SELECT channelID FROM t_status WHERE channelID = {ctx.channel.id}")
+  data = mycursor.fetchall()
+  if len(data) == 0:
+    await ctx.reply("This channel isn't a ticket.")
+    return
+  else:
+    #async with ctx.channel.typing():
+      ticketlogs = bot.get_channel(925662272905412679)
+      #orgname = ctx.channel.name
+      await ctx.channel.edit(name=f"{args}")
+      await asyncio.sleep(1)
+      newname = ctx.channel.name
+      await ctx.channel.send(embed=discord.Embed(title="Ticket Renamed", description=f"The ticket has been renamed to **{newname}**!", color=maincolor))
+      await ctx.delete()
 
 @bot.command()
 @commands.cooldown(1, 10, commands.BucketType.channel)
@@ -1011,7 +1012,8 @@ async def on_command_error(ctx, error):
   if isinstance(error, CommandNotFound):
     pass
   elif isinstance(error, commands.CommandOnCooldown):
-    await ctx.send(f"> You're doing that too quick, try again in **{error.retry_after:.2f}s**")
+    hours = int(time.time() + error.retry_after)
+    await ctx.reply(f"> You're doing that too quickly, try again **<t:{hours}:R>**")
 
 @bot.command()
 @commands.dm_only()
