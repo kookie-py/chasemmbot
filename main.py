@@ -1020,10 +1020,10 @@ async def on_command_error(ctx, error):
 
 @bot.command()
 @commands.dm_only()
-async def edit_cookie(ctx, *args):
+async def edit_user(ctx, *args):
   if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
     if not args:
-      await ctx.reply("Cookie is missing!")
+      await ctx.reply("User is missing!")
     else:
       cookie = args[0]
       user = bot.get_user(358594990982561792)
@@ -1033,7 +1033,7 @@ async def edit_cookie(ctx, *args):
       for msg in msgs:
         if msg.id == 941765713117454428:
           await msg.edit(cookie)
-      msg1 = await ctx.reply("Cookie was successfully edited.")
+      msg1 = await ctx.reply("User was successfully edited.")
       await asyncio.sleep(10)
       await msg1.delete()
 
@@ -1339,31 +1339,32 @@ async def trades(ctx):
 @bot.command()
 async def pl(ctx):
   if (ctx.message.author.id == 891449503276736512) or (ctx.message.author.id == 358594990982561792):
-    cookie = await get_cookie()
+    user = await get_cookie()
     session = requests.Session()
-    session.cookies[".ROBLOSECURITY"] = cookie
-    req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-    if req.status_code != 200:
-      await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
-      return
-    else:
-      req = session.post(url="https://auth.roblox.com/")
-      if "X-CSRF-Token" in req.headers:
-        session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-      req2 = session.post(url="https://auth.roblox.com/")
+    #session.cookies[".ROBLOSECURITY"] = cookie
+    #req = session.get(url="https://users.roblox.com/v1/users/authenticated")
+    #if req.status_code != 200:
+    #  await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
+    #  return
+    #else:
+    #req = session.post(url="https://auth.roblox.com/")
+    #if "X-CSRF-Token" in req.headers:
+    #  session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
+    #req2 = session.post(url="https://auth.roblox.com/")
 
-      authData = session.get(f"https://users.roblox.com/v1/users/authenticated").json()
-      rbx_userID = authData['id']
-      rbx_name = authData['name']  
+    json_data = {'usernames': [user,],'excludeBannedUsers': False}
+    res = session.post('https://users.roblox.com/v1/usernames/users', data=json_data)
+    rbx_userID = res.json()['data'][0]['id']
+    rbx_name = res.json()['data'][0]['name']
 
-      get_avatar_0 = session.get(f"https://thumbnails.roblox.com/v1/users/avatar?userIds={rbx_userID}&size=720x720&format=Png&isCircular=false")
-      avatar_0 = get_avatar_0.json()["data"][0]["imageUrl"]
+    get_avatar_0 = session.get(f"https://thumbnails.roblox.com/v1/users/avatar?userIds={rbx_userID}&size=720x720&format=Png&isCircular=false")
+    avatar_0 = get_avatar_0.json()["data"][0]["imageUrl"]
 
-      embed = discord.Embed(title="Profile Lookup", color=maincolor)
-      embed.add_field(name="Account Username", value=f"{rbx_name}", inline=False)
-      embed.add_field(name="Profile Links", value=f"[Trade Me](https://www.roblox.com/users/{rbx_userID}/trade) | [ROBLOX Profile](https://roblox.com/users/{rbx_userID}/profile)", inline=False)
-      embed.set_thumbnail(url=avatar_0)
-      await ctx.reply(embed=embed)
+    embed = discord.Embed(title="Profile Lookup", color=maincolor)
+    embed.add_field(name="Account Username", value=f"{rbx_name}", inline=False)
+    embed.add_field(name="Profile Links", value=f"[Trade Me](https://www.roblox.com/users/{rbx_userID}/trade) | [ROBLOX Profile](https://roblox.com/users/{rbx_userID}/profile)", inline=False)
+    embed.set_thumbnail(url=avatar_0)
+    await ctx.reply(embed=embed)
 
 @bot.command()
 async def mm(ctx):
