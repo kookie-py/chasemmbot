@@ -775,9 +775,12 @@ async def reopen(ctx):
           if Toggle == True:
             #async with ctx.channel.typing():
               mycursor.execute(f"SELECT msgID FROM closed_msgs WHERE channelID = '{ctx.channel.id}'")
-              for i in mycursor:
-                closed_msg = await ctx.channel.fetch_message(int(i[0]))
-              await closed_msg.delete()
+              try:
+                for i in mycursor:
+                  closed_msg = await ctx.channel.fetch_message(int(i[0]))
+                await closed_msg.delete()
+              except NotFound:
+                pass
               mycursor.execute(f"SELECT userID FROM added_info WHERE channelID = '{ctx.channel.id}'")
               for y in mycursor:
                 users = guild.get_member(int(y[0]))
