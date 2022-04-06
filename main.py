@@ -684,6 +684,16 @@ async def rename(ctx, *args):
     return
   else:
     #async with ctx.channel.typing():
+      ents = []
+      async for entry in ctx.guild.audit_logs(limit=200, user=bot.user, action=discord.AuditLogAction.channel_update, oldest_first=False):
+        if (entry.created_at.timestamp()) > (datetime.now()-timedelta(minutes=10)).timestamp():
+          if entry.target.id == ctx.channel.id:
+            ents.append(entry)
+      if len(ents) == 2:
+        past = ents[0].created_at
+        date = past + timedelta(minutes=10)
+        await ctx.reply(f"> Ratelimit triggered, try again **<t:{int(date.timestamp())}:R>**")
+        return
       ticketlogs = bot.get_channel(925662272905412679)
       #orgname = ctx.channel.name
       await ctx.channel.edit(name=f"{args}")
@@ -1353,7 +1363,7 @@ async def pl(ctx):
     #req2 = session.post(url="https://auth.roblox.com/")
 
     js = {'usernames': [user,],'excludeBannedUsers': False}
-    res = session.post('https://users.roblox.com/v1/usernames/users', data=json_data)
+    res = session.post('https://users.roblox.com/v1/usernames/users', data=js)
     rbx_userID = res.json()['data'][0]['id']
     rbx_name = res.json()['data'][0]['name']
 
