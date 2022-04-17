@@ -244,7 +244,7 @@ class Closed_Msgs(discord.ui.View):
         mycursor.execute(f"DELETE FROM t_owners WHERE channelID = '{interaction.channel_id}'")
         db.commit()
         users={}
-        transcript = await chat_exporter.export(channel=interaction.channel, limit=None, set_timezone="America/Los_Angeles")
+        transcript = await chat_exporter.export(channel=interaction.channel, limit=None, tz_info="America/Los_Angeles")
         if transcript is None:
           return
         transcript_file = discord.File(io.BytesIO(transcript.encode()), filename=f"transcript-{interaction.channel.name}.html")
@@ -340,7 +340,7 @@ class Closed_Msgs(discord.ui.View):
       mycursor = db.cursor()
       users={}
       await interaction.response.send_message(content=f"{interaction.user.mention}", embed=loading_embed, ephemeral=False)
-      transcript = await chat_exporter.export(channel=interaction.channel, limit=None, set_timezone="America/Los_Angeles")
+      transcript = await chat_exporter.export(channel=interaction.channel, limit=None, tz_info="America/Los_Angeles")
       if transcript is None:
         return
       transcript_file = discord.File(io.BytesIO(transcript.encode()), filename=f"transcript-{interaction.channel.name}.html")
@@ -631,7 +631,7 @@ async def delete(ctx):
             logembed.add_field(name=f"Category", value=f"{ctx.channel.category.name} | {ctx.channel.category.id}", inline=False)
           logembed.set_author(name=f"Action: Ticket Deleted", icon_url=f"{ctx.author.display_avatar.url}")
           await ticketlogs.send(embed=logembed)
-          transcript = await chat_exporter.export(channel=ctx.channel, limit=None, set_timezone="America/Los_Angeles")
+          transcript = await chat_exporter.export(channel=ctx.channel, limit=None, tz_info="America/Los_Angeles")
           if transcript is None:
             return
           transcript_file = discord.File(io.BytesIO(transcript.encode()), filename=f"transcript-{ctx.channel.name}.html")
@@ -991,7 +991,7 @@ async def transcript(ctx):
       else:
       
         
-          transcript = await chat_exporter.export(channel=ctx.channel, limit=None, set_timezone="America/Los_Angeles")
+          transcript = await chat_exporter.export(channel=ctx.channel, limit=None, tz_info="America/Los_Angeles")
           if transcript is None:
             return
           transcript_file = discord.File(io.BytesIO(transcript.encode()), filename=f"transcript-{ctx.channel.name}.html")
@@ -1693,5 +1693,15 @@ async def lim(ctx):
   embed.set_thumbnail(url=f'https://www.roblox.com/asset-thumbnail/image?assetId={info["id"]}&width=420&height=420&format=png')
   await ctx.reply(embed=embed)
 
+@bot.command()
+async def fee(ctx):
+  embed = discord.Embed(
+    title="Middleman Fee",
+    color=0xf3f3f3)
+  embed.add_field(name="Standard Fee", value="`$3.00`", inline=True)
+  embed.add_field(name="Server Booster Fee", value="`FREE`", inline=True)
+  embed.add_field(name="Payment Methods", value="<:fee_cashapp:870211530120118282> - `$ChaseMM0002`\n<:fee_bitcoin:870211550722543707> - `bc1qkha0hcl36vuujwcen6zrxme8s2kqjwen5703jj`\n<:fee_eth:913749231678930975> - `0x38471306529380a90045Fb4b63FF612F3A1E3437`\n<:fee_ltc:917264308218515526> - `Ldqtpytrp4PvezPKDuTPf3R2Xm5a42ZTb5`\n<:fee_zelle:870211540664602674> - `Temporarily Unavailable`", inline=False)
+  embed.add_field(name="Finished", value="Please send a screenshot/transaction ID after you pay the fee. When paying with Ethereum, you MUST cover the gas fee!", inline=False)
+  
 
 bot.run(TOKEN)
