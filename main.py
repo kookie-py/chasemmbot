@@ -97,19 +97,11 @@ bot.load_extension("jishaku")
 async def on_ready():
   print(f"Connected To Discord User: {bot.user.name}#{bot.user.discriminator}")
   
-  bot.add_view(Tickets1())
   bot.add_view(Closed_Msgs())
+  bot.add_view(Tickets1())
   bot.add_view(Tickets1_off())
-
-class Tickets1_off(discord.ui.View):
-  def __init__(self):
-    super().__init__(timeout=None)
-  @discord.ui.button(row=0, label='Game Items Request', style=discord.ButtonStyle.red, custom_id="openticket111", disabled=True)
-  async def button_callback1(self, button, interaction):
-    print("hey")
-  @discord.ui.button(row=0, label='Limiteds Request', style=discord.ButtonStyle.red, custom_id="openticket222", disabled=True)
-  async def button_callback2(self, button, interaction):
-    print("hey")
+  bot.add_view(TicketsGameOn_TicketsLimsOff())
+  bot.add_view(TicketsGameOff_TicketsLimsOn())
 
 
 @bot.command()
@@ -120,12 +112,7 @@ async def off(ctx):
     msgs = await t_channel.history(limit=None).flatten()
     for i in msgs:
       if i.components != None:
-        for ii in i.components:
-          if ii.children != None:
-            for iii in ii.children:
-              if (iii.custom_id == "openticket") or (iii.custom_id == "openticket2") or (iii.custom_id == "openticket111") or (iii.custom_id == "openticket222"):
-                view = Tickets1_off()
-                await i.edit(view=view)
+        await i.edit(view=Tickets1_off())
 
 @bot.command()
 async def on(ctx):
@@ -135,12 +122,69 @@ async def on(ctx):
     msgs = await t_channel.history(limit=None).flatten()
     for i in msgs:
       if i.components != None:
-        for ii in i.components:
-          if ii.children != None:
-            for iii in ii.children:
-              if (iii.custom_id == "openticket") or (iii.custom_id == "openticket2") or (iii.custom_id == "openticket111") or (iii.custom_id == "openticket222"):
-                view = Tickets1()
-                await i.edit(view=view)
+        await i.edit(view=Tickets1())
+
+@bot.command()
+async def toggle_game(ctx):
+  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
+    await ctx.message.delete()
+    t_channel = bot.get_channel(918146416747102249)
+    msgs = await t_channel.history(limit=None).flatten()
+    for i in msgs:
+      if i.components != None:
+        whatisLims = False
+        whatisGames = False
+        
+        if i.components[0].children[1].disabled == True: # if lims disabled
+          whatisLims = False
+        else: # if lims enabled
+          whatisLims = True
+        
+        if i.components[0].children[0].disabled == True: # if game disabled
+          whatisGames = False
+        else: # if game enabled
+          whatisGames = True
+        
+        if (whatisGames == True) and (whatisLims == False): # game on, lims off -> game=off, lims=off
+          await i.edit(view=Tickets1_off())
+        elif (whatisGames == False) and (whatisLims == True): # games off, lims on -> game=on, lims=on
+          await i.edit(view=Tickets1())
+        elif (whatisGames == True) and (whatisLims == True): # game on, lims on -> game=off, lims=on
+          print(1)
+          await i.edit(view=TicketsGameOff_TicketsLimsOn())
+          print(11)
+        elif (whatisGames == True) and (whatisLims == True): # game off, lims off -> game=on, lims=off
+          await i.edit(view=TicketsGameOn_TicketsLimsOff())
+
+@bot.command()
+async def toggle_lims(ctx):
+  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
+    await ctx.message.delete()
+    t_channel = bot.get_channel(918146416747102249)
+    msgs = await t_channel.history(limit=None).flatten()
+    for i in msgs:
+      if i.components != None:
+        whatisLims = False
+        whatisGames = False
+        
+        if i.components[0].children[1].disabled == True: # if lims disabled
+          whatisLims = False
+        else: # if lims enabled
+          whatisLims = True
+          
+        if i.components[0].children[0].disabled == True: # if game disabled
+          whatisGames = False
+        else: # if game enabled
+          whatisGames = True
+        
+        if (whatisGames == True) and (whatisLims == False): # game on, lims off -> game=on, lims=on
+          await i.edit(view=Tickets1())
+        elif (whatisGames == False) and (whatisLims == True): # games off, lims on -> game=off, lims=off
+          await i.edit(view=Tickets1_off())
+        elif (whatisGames == True) and (whatisLims == True): # game on, lims on -> game=on, lims=off
+          await i.edit(view=TicketsGameOn_TicketsLimsOff())
+        elif (whatisGames == True) and (whatisLims == True): # game off, lims off -> game=off, lims=on
+          await i.edit(view=TicketsGameOff_TicketsLimsOn())
 
 @bot.command()
 async def prefix(ctx, arg1=None):
@@ -443,7 +487,7 @@ class Tickets1(discord.ui.View):
           await ticketlogs.send(embed=logembed)
           embed = discord.Embed(title="Middleman Request", description=f"You've successfully opened a Middleman Request.\nPlease wait for the Middleman to view this ticket, don't ping them.\n\n**While You're Waiting**\n・State who you're trading with.\n・State what you're trading.\n・Invite the other trader if they're not here.",color=maincolor)
           embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user}')
-          await channel.send(f"{interaction.user.mention}, @here", embed=embed)
+          await channel.send(f"{interaction.user.mention}, @ here", embed=embed)
     except mysql.connector.errors.InternalError:
       db = mysql.connector.connect(
         host="remotemysql.com",
@@ -524,7 +568,7 @@ class Tickets1(discord.ui.View):
           await ticketlogs.send(embed=logembed)
           embed = discord.Embed(title="Middleman Request", description=f"You've successfully opened a Middleman Request.\nPlease wait for the Middleman to view this ticket, don't ping them.\n\n**While You're Waiting**\n・State who you're trading with.\n・State what you're trading.\n・Invite the other trader if they're not here.",color=maincolor)
           embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user}')
-          await channel.send(f"{interaction.user.mention}, @here", embed=embed)
+          await channel.send(f"{interaction.user.mention}, @ here", embed=embed)
     except mysql.connector.errors.InternalError:
       db = mysql.connector.connect(
         host="remotemysql.com",
@@ -535,6 +579,196 @@ class Tickets1(discord.ui.View):
       await asyncio.sleep(3)
       mycursor.execute(f"DELETE FROM t_cd")
       db.commit()
+
+class Tickets1_off(discord.ui.View):
+  def __init__(self):
+    super().__init__(timeout=None)
+  @discord.ui.button(row=0, label='Game Items Request', style=discord.ButtonStyle.red, custom_id="openiiiiiiiticket111", disabled=True)
+  async def button_callback1(self, button, interaction):
+    print("hey")
+  @discord.ui.button(row=0, label='Limiteds Request', style=discord.ButtonStyle.red, custom_id="opentuuuuuuuicket222", disabled=True)
+  async def button_callback2(self, button, interaction):
+    print("hey")
+    
+
+class TicketsGameOn_TicketsLimsOff(discord.ui.View):
+  def __init__(self):
+    super().__init__(timeout=None)
+  @discord.ui.button(row=0, label='Game Items Request', style=discord.ButtonStyle.green, custom_id="openfffffticket", disabled=False)
+  async def button_callback1(self, button, interaction):
+    
+    try:
+    
+      await interaction.response.send_message(content=f"**Prepearing..**", ephemeral=True)
+      
+      guild = bot.get_guild(713213895073857548)
+      db = mysql.connector.connect(
+        host="remotemysql.com",
+        user="XPJ9qhFktO",
+        passwd="lXPOlT66Pt",
+        database="XPJ9qhFktO")
+      mycursor = db.cursor()
+      mycursor.execute(f"SELECT cd FROM t_cd WHERE userID = '{interaction.user.id}'")
+      data = mycursor.fetchall()
+      if len(data) == 1:
+        await interaction.edit_original_message(content=f"**Slow Down! You're on cooldown.**")
+        return
+      elif len(data) == 0:
+        
+        mycursor.execute("INSERT INTO t_cd (userID, cd) VALUES (%s, %s)", (interaction.user.id, "on_cd"))
+        db.commit()
+
+        await asyncio.sleep(1.5)
+        
+        mycursor.execute(f"SELECT * FROM t_owners")
+        Toggle = True
+        for x in mycursor:
+          if int(x[0]) == interaction.user.id:
+            Toggle = False
+            await interaction.edit_original_message(content=f"**You Already Have a Ticket Created!** -> <#{x[1]}>")
+            mycursor.execute(f"DELETE FROM t_cd WHERE userID = '{interaction.user.id}'")
+            db.commit()
+            mycursor.close()
+            return
+        if Toggle == True:
+          
+          await asyncio.sleep(0.5)
+          
+          await interaction.edit_original_message(content=f"**Creating ticket..**")
+              
+          loading_embed = discord.Embed(color = 0xffffff)
+          loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
+          ticketlogs = bot.get_channel(925662272905412679)
+          mmrole = guild.get_role(944100142607384586)
+          category2 = bot.get_channel(934103126468853760)
+          overwrites = {
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            interaction.user: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True),
+            mmrole: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
+          }
+          channel = await guild.create_text_channel(f"mm-{interaction.user.name}", topic=f"Chase's MM Service | {interaction.user.id}", category=category2, overwrites=overwrites)
+          await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
+          mycursor.execute("INSERT INTO t_status (channelID, status) VALUES (%s, %s)", (channel.id, "Open"))
+          mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
+          mycursor.execute("INSERT INTO t_owners (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
+          mycursor.execute(f"DELETE FROM t_cd WHERE userID = '{interaction.user.id}'")
+          db.commit()
+          mycursor.close()
+          db.close()
+          logembed = discord.Embed(color=maincolor)
+          logembed.add_field(name=f"User Responsible", value=f"{interaction.user.mention} | {interaction.user.id}", inline=False)
+          logembed.add_field(name=f"Channel", value=f"{channel.name} | {channel.id}", inline=False)
+          if channel.category != None:
+            logembed.add_field(name=f"Category", value=f"{channel.category.name} | {channel.category.id}", inline=False)
+          logembed.set_author(name=f"Action: Ticket Created", icon_url=f"{interaction.user.display_avatar.url}")
+          await ticketlogs.send(embed=logembed)
+          embed = discord.Embed(title="Middleman Request", description=f"You've successfully opened a Middleman Request.\nPlease wait for the Middleman to view this ticket, don't ping them.\n\n**While You're Waiting**\n・State who you're trading with.\n・State what you're trading.\n・Invite the other trader if they're not here.",color=maincolor)
+          embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user}')
+          await channel.send(f"{interaction.user.mention}, @ here", embed=embed)
+    except mysql.connector.errors.InternalError:
+      db = mysql.connector.connect(
+        host="remotemysql.com",
+        user="XPJ9qhFktO",
+        passwd="lXPOlT66Pt",
+        database="XPJ9qhFktO")
+      mycursor = db.cursor()
+      await asyncio.sleep(3)
+      mycursor.execute(f"DELETE FROM t_cd")
+      db.commit()
+  @discord.ui.button(row=0, label='Limiteds Request', style=discord.ButtonStyle.red, custom_id="opentvvvvvicket222", disabled=True)
+  async def button_callback2(self, button, interaction):
+    print("hey")
+
+
+class TicketsGameOff_TicketsLimsOn(discord.ui.View):
+  def __init__(self):
+    super().__init__(timeout=None)
+  @discord.ui.button(row=0, label='Game Items Request', style=discord.ButtonStyle.red, custom_id="opentddddicket111", disabled=True)
+  async def button_callback1(self, button, interaction):
+    print("hey")
+  @discord.ui.button(row=0, label='Limiteds Request', style=discord.ButtonStyle.green, custom_id="ddaopenticket2", disabled=False)
+  async def button_callback2(self, button, interaction):
+    
+    try:
+    
+      await interaction.response.send_message(content=f"**Prepearing..**", ephemeral=True)
+      
+      guild = bot.get_guild(713213895073857548)
+      db = mysql.connector.connect(
+        host="remotemysql.com",
+        user="XPJ9qhFktO",
+        passwd="lXPOlT66Pt",
+        database="XPJ9qhFktO")
+      mycursor = db.cursor()
+      mycursor.execute(f"SELECT cd FROM t_cd WHERE userID = '{interaction.user.id}'")
+      data = mycursor.fetchall()
+      if len(data) == 1:
+        await interaction.edit_original_message(content=f"**Slow Down! You're on cooldown.**")
+        return
+      elif len(data) == 0:
+        
+        mycursor.execute("INSERT INTO t_cd (userID, cd) VALUES (%s, %s)", (interaction.user.id, "on_cd"))
+        db.commit()
+
+        await asyncio.sleep(1.5)
+        
+        mycursor.execute(f"SELECT * FROM t_owners")
+        Toggle = True
+        for x in mycursor:
+          if int(x[0]) == interaction.user.id:
+            Toggle = False
+            await interaction.edit_original_message(content=f"**You Already Have a Ticket Created!** -> <#{x[1]}>")
+            mycursor.execute(f"DELETE FROM t_cd WHERE userID = '{interaction.user.id}'")
+            db.commit()
+            mycursor.close()
+            return
+        if Toggle == True:
+          
+          await asyncio.sleep(0.5)
+          
+          await interaction.edit_original_message(content=f"**Creating ticket..**")
+              
+          loading_embed = discord.Embed(color = 0xffffff)
+          loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
+          ticketlogs = bot.get_channel(925662272905412679)
+          mmrole = guild.get_role(944100142607384586)
+          category2 = bot.get_channel(927037368656068678)
+          overwrites = {
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            interaction.user: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True),
+            mmrole: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
+          }
+          channel = await guild.create_text_channel(f"mm-{interaction.user.name}", topic=f"Chase's MM Service | {interaction.user.id}", category=category2, overwrites=overwrites)
+          await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
+          mycursor.execute("INSERT INTO t_status (channelID, status) VALUES (%s, %s)", (channel.id, "Open"))
+          mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
+          mycursor.execute("INSERT INTO t_owners (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
+          mycursor.execute(f"DELETE FROM t_cd WHERE userID = '{interaction.user.id}'")
+          db.commit()
+          mycursor.close()
+          db.close()
+          logembed = discord.Embed(color=maincolor)
+          logembed.add_field(name=f"User Responsible", value=f"{interaction.user.mention} | {interaction.user.id}", inline=False)
+          logembed.add_field(name=f"Channel", value=f"{channel.name} | {channel.id}", inline=False)
+          if channel.category != None:
+            logembed.add_field(name=f"Category", value=f"{channel.category.name} | {channel.category.id}", inline=False)
+          logembed.set_author(name=f"Action: Ticket Created", icon_url=f"{interaction.user.display_avatar.url}")
+          await ticketlogs.send(embed=logembed)
+          embed = discord.Embed(title="Middleman Request", description=f"You've successfully opened a Middleman Request.\nPlease wait for the Middleman to view this ticket, don't ping them.\n\n**While You're Waiting**\n・State who you're trading with.\n・State what you're trading.\n・Invite the other trader if they're not here.",color=maincolor)
+          embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user}')
+          await channel.send(f"{interaction.user.mention}, @ here", embed=embed)
+    except mysql.connector.errors.InternalError:
+      db = mysql.connector.connect(
+        host="remotemysql.com",
+        user="XPJ9qhFktO",
+        passwd="lXPOlT66Pt",
+        database="XPJ9qhFktO")
+      mycursor = db.cursor()
+      await asyncio.sleep(3)
+      mycursor.execute(f"DELETE FROM t_cd")
+      db.commit()
+
+
 
 @bot.command()
 async def remove(ctx, user : discord.Member):  
