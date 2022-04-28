@@ -31,8 +31,7 @@ import arrow
 import math
 import mysql.connector
 import humanfriendly
-import imaplib
-import email
+import DiscordUtils
 
 maincolor = 0xf3f3f3
 grey = 0x99AAB5
@@ -90,18 +89,29 @@ intents = discord.Intents.all()
 intents.members = True
 
 bot = MyBot(command_prefix=get_prefix(), intents=intents, case_insensitive=True, help_command=None)
+tracker = DiscordUtils.InviteTracker(bot)
 
 bot.load_extension("jishaku")
   
 @bot.event
 async def on_ready():
-  print(f"Connected To Discord User: {bot.user.name}#{bot.user.discriminator}")
+  await tracker.cache_invites()
   
   bot.add_view(Closed_Msgs())
   bot.add_view(Tickets1())
   bot.add_view(Tickets1_off())
   bot.add_view(TicketsGameOn_TicketsLimsOff())
   bot.add_view(TicketsGameOff_TicketsLimsOn())
+  
+  print(f"Connected To Discord User: {bot.user.name}#{bot.user.discriminator}")
+
+@bot.event
+async def on_invite_create(invite):
+    await tracker.update_invite_cache(invite)
+
+@bot.event
+async def on_invite_delete(invite):
+    await tracker.remove_invite_cache(invite)
 
 
 @bot.command()
@@ -213,9 +223,38 @@ async def prefix(ctx, arg1=None):
         await ctx.reply(embed=embed)
 
 @bot.event
-async def on_member_remove(member):
-  guild = bot.get_guild(713213895073857548)
+async def on_member_join(member):
   if member.guild.id == 713213895073857548:
+    inviter = await tracker.fetch_inviter(member)
+    c = bot.get_channel(803421375716130856)
+    a = arrow.get(member.created_at)
+    createdAtDate = math.trunc(a.timestamp())
+    embed = discord.Embed(title="Member Joined", color=0xf3f3f3)
+    embed.add_field(name=f"Member", value=f"{member.id} - {member.mention} - {member.name}#{member.discriminator}", inline=False)
+    if inviter != None:
+      user = inviter[0]
+      code = inviter[1]
+      embed.add_field(name=f"Inviter", value=f"{user.id} - {user.mention} - {user.name}#{user.discriminator}", inline=False)
+      embed.add_field(name=f"Invite Code", value=f"{code}", inline=False)
+    else:
+      embed.add_field(name=f"Inviter", value=f"`Unknown`", inline=False)
+      embed.add_field(name=f"Invite Code", value=f"`Unknown`", inline=False)
+    embed.add_field(name=f"Account Creation", value=f"<t:{createdAtDate}> - <t:{createdAtDate}:R>", inline=False)
+    await c.send(embed=embed)
+
+@bot.event
+async def on_member_remove(member):
+  if member.guild.id == 713213895073857548:
+    await tracker.remove_guild_cache(member)
+    
+    c = bot.get_channel(803421375716130856)
+    a = arrow.get(member.created_at)
+    createdAtDate = math.trunc(a.timestamp())
+    embed = discord.Embed(title="Member Left", color=0xf3f3f3)
+    embed.add_field(name=f"Member", value=f"{member.id} - {member.mention} - {member.name}#{member.discriminator}", inline=False)
+    embed.add_field(name=f"Account Creation", value=f"<t:{createdAtDate}> - <t:{createdAtDate}:R>", inline=False)
+    await c.send(embed=embed)
+    
     db = mysql.connector.connect(
       host="remotemysql.com",
       user="XPJ9qhFktO",
