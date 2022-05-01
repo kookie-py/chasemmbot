@@ -1963,7 +1963,8 @@ async def lim(ctx):
       info = limited
   embed = discord.Embed(title=f"{info['name']}", description=f"[Click here to purchase!](https://www.roblox.com/catalog/{info['id']})", color=maincolor)
   embed.add_field(name="R$", value=price)
-  embed.set_thumbnail(url=f'https://www.roblox.com/asset-thumbnail/image?assetId={info["id"]}&width=420&height=420&format=png')
+  res = requests.get(f"https://thumbnails.roblox.com/v1/assets?assetIds={info['id']}&size=420x420&format=Png&isCircular=true")
+  embed.set_thumbnail(url=res.json()['data'][0]['imageUrl'])
   await ctx.reply(embed=embed)
 
 @bot.command()
