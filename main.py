@@ -121,7 +121,7 @@ async def off(ctx):
     t_channel = bot.get_channel(918146416747102249)
     msgs = await t_channel.history(limit=None).flatten()
     for i in msgs:
-      if i.components != None:
+      if len(i.components) != 0:
         await i.edit(view=Tickets1_off())
 
 @bot.command()
@@ -131,7 +131,7 @@ async def on(ctx):
     t_channel = bot.get_channel(918146416747102249)
     msgs = await t_channel.history(limit=None).flatten()
     for i in msgs:
-      if i.components != None:
+      if len(i.components) != 0:
         await i.edit(view=Tickets1())
 
 @bot.command()
@@ -141,7 +141,7 @@ async def toggle_game(ctx):
     t_channel = bot.get_channel(918146416747102249)
     msgs = await t_channel.history(limit=None).flatten()
     for i in msgs:
-      if i.components != None:
+      if len(i.components) != 0:
         whatisLims = False
         whatisGames = False
         
@@ -173,7 +173,7 @@ async def toggle_lims(ctx):
     t_channel = bot.get_channel(918146416747102249)
     msgs = await t_channel.history(limit=None).flatten()
     for i in msgs:
-      if i.components != None:
+      if len(i.components) != 0:
         whatisLims = False
         whatisGames = False
         
