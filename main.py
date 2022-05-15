@@ -854,7 +854,7 @@ async def remove(ctx, user : discord.Member):
             logembed.set_author(name=f"Action: Member Removed", icon_url=f"{ctx.author.display_avatar.url}")
             await ticketlogs.send(embed=logembed)
             mycursor.execute(f"DELETE FROM added_info WHERE userID = '{user.id}'")
-            mycursor.execute(f"DELETE FROM t_owners WHERE channelID = '{user.id}'")
+            mycursor.execute(f"DELETE FROM t_owners WHERE channelID = '{ctx.channel.id}'")
             db.commit()
             mycursor.close()
             db.close()
