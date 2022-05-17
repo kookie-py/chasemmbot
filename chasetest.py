@@ -424,7 +424,7 @@ async def unban_error(ctx, error):
   if isinstance(error, commands.UserNotFound):
     await ctx.reply("User wasn't found aka. invalid ID/User.")
 
-@bot.command()
+@bot.command(aliases=['s'])
 @commands.cooldown(1, 5, commands.BucketType.user)
 async def snipe(ctx, arg1=None):
   snipeall = False
@@ -657,7 +657,7 @@ async def role(ctx, error):
   if isinstance(error, commands.UserNotFound):
     await ctx.reply("User wasn't found aka. invalid ID/User.")
 
-@bot.command()
+@bot.command(aliases=['m'])
 @commands.has_permissions(moderate_members=True)
 async def mute(ctx, member : discord.Member=None, duration=None):
   time_convert = {"s":1, "m":60, "h":3600,"d":86400}
@@ -726,5 +726,8 @@ async def mute(ctx, member : discord.Member=None, duration=None):
       if duration == None:
         await ctx.reply("Please state the duration `(e.g. of duration: 10s = 10 secs / 10h = 10 hours / 10d = 10 days)`")
         return
+
+  
+  
 
 bot.run(TOKEN)

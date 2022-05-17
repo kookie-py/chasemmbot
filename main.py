@@ -1108,7 +1108,8 @@ async def reopen(ctx):
 async def help(ctx):
   PREFIX = get_prefix()
   embed = discord.Embed(color=maincolor)
-  embed.add_field(name=f"<:account:863985851079983105>・__Middleman__", value=f"───────────〃\n> ៹ 〃[`add` \"@user/userID\"] **-** Add user to a ticket.\n> ៹ 〃[`remove` \"@user/userID\"] **-** Remove user from a ticket.\n> ៹ 〃[`rename` \"name\"] **-** Rename a ticket.\n> ៹ 〃[`delete`/`del`] **-** Delete a ticket.\n> ៹ 〃[`mmban` \"@user/userID\" \"reason\"] **-** Blacklist a user.\n> ៹ 〃[`unmmban` \"@user/userID\"] **-** Unblacklist a user.\n> ៹ 〃[`close`] **-** Close a ticket.\n> ៹ 〃[`reopen`] **-** Reopen a closed ticket.\n> ៹ 〃[`transcript`] **-** Saves ticket's transcript.\nㅤ", inline=False)
+  embed.add_field(name=f"<:account:863985851079983105>・__Middleman__", value=f"───────────〃\n> ៹ 〃[`add` \"@user/userID\"] **-** Add user to a ticket.\n> ៹ 〃[`remove` \"@user/userID\"] **-** Remove user from a ticket.\n> ៹ 〃[`rename` \"name\"] **-** Rename a ticket.\n> ៹ 〃[`delete`/`del`] **-** Delete a ticket.\n> ៹ 〃[`mmban` \"@user/userID\" \"reason\"] **-** Blacklist a user.\n> ៹ 〃[`unmmban` \"@user/userID\"] **-** Unblacklist a user.\n> ៹ 〃[`close`] **-** Close a ticket.\n> ៹ 〃[`reopen`] **-** Reopen a closed ticket.\n> ៹ 〃[`transcript`] **-** Saves ticket's transcript.", inline=False)
+  embed.add_field(name=f"🛠️・__Moderation__", value=f"───────────〃\n> ៹ 〃[`ban/unban` \"@user/userID\"] **-** Bans/Unbans a user.\n> ៹ 〃[`snipe`/`snipe all`] **-** Snipes deleted message/s.\n> ៹ 〃[`purge` \"number\"] **-** Purges messages.\n> ៹ 〃[`role` \"@user/userID\"] **-** Adds/Revokes a role from/to a user.\n> ៹ 〃[`whois` \"@user/userID\"] **-** Sends info about a user.\n> ៹ 〃[`mute` \"@user/userID\" \"duration\"] **-** Mutes a user.\n> ៹ 〃[`unmute`] **-** Unmutes a user.", inline=False)
   embed.add_field(name=f"👑・__Chase's__", value=f"───────────〃\n> ៹ 〃[`mm`] **-** Sends an embed with the discord mm's account info.\n> ៹ 〃[`pl`] **-** Sends an embed with the roblox mm's account info.\n> ៹ 〃[`prefix \"newPrefix\"`] **-** Changes the bot's prefix.\n> ៹ 〃[`i` \"username\"] **-** Get user info (Roblox).\n> ៹ 〃[`s` \"username\"] **-** Send friend request (Roblox).\n> ៹ 〃[`delf`] **-** Unfriend all users (Roblox).\n> ៹ 〃[`get_f`] **-** Get recent friend requests (Roblox).\n> ៹ 〃[`acc_f` \"username\"] **-** Accept friend request (Roblox).\n> ៹ 〃[`dec_f` \"username\"] **-** Decline friend request (Roblox).\n> ៹ 〃[`dec_all`] **-** Decline all friend requests (Roblox).\n> ៹ 〃[`dec_trades`] **-** Decline all inbound trades (Roblox).\n> ៹ 〃[`trades`] **-** Get inbound trades (Roblox).", inline=False)
   embed.set_footer(text=f"Prefix: {PREFIX}")
   await ctx.reply(embed=embed)
@@ -1340,53 +1341,6 @@ async def edit_user(ctx, *args):
       msg1 = await ctx.reply("User was successfully edited.")
       await asyncio.sleep(10)
       await msg1.delete()
-
-@bot.command()
-async def s(ctx, *args):
-
-    cookie = await get_cookie()
-    io = Client1(cookies=cookie)
-
-    session = requests.Session()
-
-    if (ctx.message.author.id == 891449503276736512):
-      if not args:
-          await ctx.reply("Username is missing!")
-      else:
-        try:
-          #async with ctx.channel.typing():
-            session = requests.Session()
-            session.cookies[".ROBLOSECURITY"] = cookie
-            req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-            req = session.post(url="https://auth.roblox.com/")
-            if "X-CSRF-Token" in req.headers:
-              session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-            req2 = session.post(url="https://auth.roblox.com/")
-            
-            user = await io.get_user_by_name(args[0])
-            auth_user = await io.get_auth_user()
-            await auth_user.send_friend_request(TargetId=user.id)
-            a = session.get(f"https://thumbnails.roblox.com/v1/users/avatar?userIds={user.id}&size=720x720&format=Png&isCircular=false")
-            ava = a.json()["data"][0]["imageUrl"]
-            friendembed=discord.Embed(
-                title=f"Friend Request Sent",
-                description=f"A friend request has been sent to **[{user.name}](https://www.roblox.com/users/{user.id}/profile)**!",
-                color=0x8758FF)
-            friendembed.set_thumbnail(url=ava)
-
-            friendembed1=discord.Embed(
-                title=f"Friend Request Sent",
-                description=f"A friend request has been sent to **[{user.name}](https://www.roblox.com/users/{user.id}/profile)**!",
-                color=0x8758FF)
-
-            if (a.json()["data"][0]["state"]) == "Blocked":
-              await ctx.reply(embed=friendembed1)
-            elif (a.json()["data"][0]["state"]) == "Completed":
-              await ctx.reply(embed=friendembed)
-        except PlayerNotFound:
-            await ctx.reply("Username wasn't found.")
-        except Unauthorized:
-          await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
 
 @bot.command()
 async def delf(ctx):
@@ -2233,7 +2187,7 @@ async def ban(ctx, user:discord.User=None, *, reason=None):
           embed = discord.Embed(title="Member Banned", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
           embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
           embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
-          embed.add_field(name="User", value=user.mention, inline=True)
+          embed.add_field(name="Member", value=user.mention, inline=True)
           embed.add_field(name="Reason", value=reason, inline=True)
           embed.add_field(name="Channel", value=ctx.channel.mention, inline=True)
           await logs_c.send(embed=embed)
@@ -2286,7 +2240,7 @@ async def unban(ctx, user:discord.User=None):
       embed = discord.Embed(title="Member Unbanned", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
       embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
       embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
-      embed.add_field(name="User", value=user.mention, inline=True)
+      embed.add_field(name="Member", value=user.mention, inline=True)
       embed.add_field(name="Channel", value=ctx.channel.mention, inline=True)
       await logs_c.send(embed=embed)
 
@@ -2295,7 +2249,7 @@ async def unban_error(ctx, error):
   if isinstance(error, commands.UserNotFound):
     await ctx.reply("User wasn't found aka. invalid ID/User.")
 
-@bot.command()
+@bot.command(aliases=['s'])
 @commands.cooldown(1, 5, commands.BucketType.user)
 async def snipe(ctx, arg1=None):
   snipeall = False
@@ -2367,7 +2321,7 @@ async def on_message_delete(message):
       c = bot.get_channel(763791851139629086)
       embed = discord.Embed(title="Message Deleted", color=maincolor)
       embed.set_author(name=f"{message.author.name}#{message.author.discriminator}", icon_url=f"{message.author.display_avatar.url}")
-      embed.add_field(name="User", value=message.author.mention, inline=True)
+      embed.add_field(name="Member", value=message.author.mention, inline=True)
       embed.add_field(name="Message Content", value=message.content, inline=True)
       embed.add_field(name="Channel", value=message.channel.mention, inline=True)
       await c.send(embed=embed)
@@ -2379,16 +2333,16 @@ async def on_message_edit(before_msg, after_msg):
     if len(before_msg.content) < 1000 and len(after_msg.content) < 1000:
       
       c = bot.get_channel(763791851139629086)
-      embed = discord.Embed(title="Message Deleted", description=f"[Jump to Message]({before_msg.jump_url})", color=maincolor)
+      embed = discord.Embed(title="Message Edited", description=f"[Jump to Message]({before_msg.jump_url})", color=maincolor)
       embed.set_author(name=f"{before_msg.author.name}#{before_msg.author.discriminator}", icon_url=f"{before_msg.author.display_avatar.url}")
-      embed.add_field(name="User", value=before_msg.author.mention, inline=True)
+      embed.add_field(name="Member", value=before_msg.author.mention, inline=True)
       embed.add_field(name="Old Message", value=before_msg.content, inline=True)
       embed.add_field(name="New Message", value=after_msg.content, inline=True)
       embed.add_field(name="Channel", value=before_msg.channel.mention, inline=True)
       await c.send(embed=embed)
 
 
-@bot.command()
+@bot.command(aliases=['p'])
 @commands.has_permissions(manage_messages=True)
 async def purge(ctx, limit=None):
   if limit == None:
@@ -2422,7 +2376,7 @@ async def purge(ctx, limit=None):
   embed.add_field(name="Channel", value=ctx.channel.mention, inline=True)
   await c.send(embed=embed, file=discord.File(buffer, 'messages.txt'))
 
-@bot.command()
+@bot.command(aliases=['r'])
 @commands.has_permissions(manage_roles=True)
 async def role(ctx, user : discord.User=None, roleName=None):
   if user == None:
@@ -2466,7 +2420,7 @@ async def role(ctx, user : discord.User=None, roleName=None):
       embed = discord.Embed(title="Role Removed", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
       embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
       embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
-      embed.add_field(name="User", value=user.mention, inline=True)
+      embed.add_field(name="Member", value=user.mention, inline=True)
       embed.add_field(name="Role", value=role.mention, inline=True)
       embed.add_field(name="Channel", value=ctx.channel.mention, inline=True)
       await logs_c.send(embed=embed)
@@ -2480,7 +2434,7 @@ async def role(ctx, user : discord.User=None, roleName=None):
       embed = discord.Embed(title="Role Added", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
       embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
       embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
-      embed.add_field(name="User", value=user.mention, inline=True)
+      embed.add_field(name="Member", value=user.mention, inline=True)
       embed.add_field(name="Role", value=role.mention, inline=True)
       embed.add_field(name="Channel", value=ctx.channel.mention, inline=True)
       await logs_c.send(embed=embed)
@@ -2502,7 +2456,7 @@ async def role(ctx, user : discord.User=None, roleName=None):
       embed = discord.Embed(title="Role Removed", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
       embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
       embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
-      embed.add_field(name="User", value=user.mention, inline=True)
+      embed.add_field(name="Member", value=user.mention, inline=True)
       embed.add_field(name="Role", value=role.mention, inline=True)
       embed.add_field(name="Channel", value=ctx.channel.mention, inline=True)
       await logs_c.send(embed=embed)
@@ -2516,7 +2470,7 @@ async def role(ctx, user : discord.User=None, roleName=None):
       embed = discord.Embed(title="Role Added", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
       embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
       embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
-      embed.add_field(name="User", value=user.mention, inline=True)
+      embed.add_field(name="Member", value=user.mention, inline=True)
       embed.add_field(name="Role", value=role.mention, inline=True)
       embed.add_field(name="Channel", value=ctx.channel.mention, inline=True)
       await logs_c.send(embed=embed)
@@ -2528,7 +2482,7 @@ async def role(ctx, error):
   if isinstance(error, commands.UserNotFound):
     await ctx.reply("User wasn't found aka. invalid ID/User.")
 
-@bot.command()
+@bot.command(aliases=['m'])
 @commands.has_permissions(moderate_members=True)
 async def mute(ctx, member : discord.Member=None, duration=None):
   time_convert = {"s":1, "m":60, "h":3600,"d":86400}
@@ -2574,10 +2528,10 @@ async def mute(ctx, member : discord.Member=None, duration=None):
           
           until = datetime.now() + timedelta(seconds=timeout)
           logs_c = bot.get_channel(763791851139629086)
-          embed = discord.Embed(title="Role Added", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
+          embed = discord.Embed(title="Member Muted", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
           embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
           embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
-          embed.add_field(name="User", value=member.mention, inline=True)
+          embed.add_field(name="Member", value=member.mention, inline=True)
           embed.add_field(name="Muted For", value=f"{typee} -> <t:{int(until.timestamp())}:f>", inline=True)
           embed.add_field(name="Channel", value=ctx.channel.mention, inline=True)
           await logs_c.send(embed=embed)
@@ -2597,5 +2551,29 @@ async def mute(ctx, member : discord.Member=None, duration=None):
       if duration == None:
         await ctx.reply("Please state the duration `(e.g. of duration: 10s = 10 secs / 10h = 10 hours / 10d = 10 days)`")
         return
+
+@bot.command()
+@commands.has_permissions(moderate_members=True)
+async def unmute(ctx, member : discord.Member=None):
+  if member == None:
+    await ctx.reply("Specify a user to unmute.")
+    return
+  
+  if member.timed_out == False:
+    return await ctx.reply("The user isn't muted.")
+
+  await member.remove_timeout()
+  
+  emba = discord.Embed(description=f"{member.name}#{member.discriminator} has been unmuted.", color=maincolor)
+  await ctx.reply(embed=emba)
+  
+  logs_c = bot.get_channel(763791851139629086)
+  embed = discord.Embed(title="Member Unmuted", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
+  embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
+  embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
+  embed.add_field(name="Member", value=member.mention, inline=True)
+  embed.add_field(name="Channel", value=ctx.channel.mention, inline=True)
+  await logs_c.send(embed=embed)
+
 
 bot.run(TOKEN)
