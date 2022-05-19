@@ -2271,7 +2271,7 @@ async def snipe(ctx, arg1=None):
     mycursor.execute(f"SELECT * FROM snipe_info WHERE channel_id = '{ctx.channel.id}' ORDER BY time DESC")
     data = mycursor.fetchall()
     if len(data) == 0:
-      return await ctx.reply("There are no messages to snipe!")
+      return await ctx.reply(embed=discord.Embed(description="There are no messages to snipe!", color=maincolor))
     
     time = f"<t:{data[0][3]}:R>"
     
@@ -2284,7 +2284,7 @@ async def snipe(ctx, arg1=None):
     mycursor.execute(f"SELECT * FROM snipe_info WHERE channel_id = '{ctx.channel.id}' ORDER BY time DESC")
     data = mycursor.fetchall()
     if len(data) == 0:
-      return await ctx.reply("There are no messages to snipe!")
+      return await ctx.reply(embed=discord.Embed(description="There are no messages to snipe!", color=maincolor))
     
     embed=discord.Embed(color=maincolor)
     embed.set_footer(text=f"Latest {len(data[:10])} deleted messages.")
@@ -2387,14 +2387,14 @@ async def purge(ctx, limit=None):
 @commands.has_permissions(administrator=True)
 async def role(ctx, user : discord.User=None, roleName=None):
   if user == None:
-    return await ctx.reply("Specfiy a user.")
+    return await ctx.reply(embed=discord.Embed(description="Please specify a user to assign/revoke a role.", color=maincolor))
     
   if roleName == None:
-    return await ctx.reply("Specify a role, either role name or id.")
+    return await ctx.reply(embed=discord.Embed(description="Please specify a role, either role ID or name.", color=maincolor))
   
   checkmember = ctx.guild.get_member(user.id)
   if checkmember == None:
-    return await ctx.reply("User wasn't found aka. invalid ID/User.")
+    return await ctx.reply(embed=discord.Embed(description="User wasn't found aka. invalid ID/User.", color=maincolor))
   
   user = ctx.guild.get_member(user.id)
   
@@ -2414,7 +2414,7 @@ async def role(ctx, user : discord.User=None, roleName=None):
         rolenames.append(i.name)
     closeststr = difflib.get_close_matches(rolename, rolenames)
     if len(closeststr) == 0:
-      return await ctx.reply("Role wasn't found.")
+      return await ctx.reply(embed=discord.Embed(description="Role wasn't found.", color=maincolor))
     
     role = discord.utils.find(lambda r: r.name == closeststr[0], ctx.guild.roles)
     
@@ -2454,7 +2454,7 @@ async def role(ctx, user : discord.User=None, roleName=None):
     
     role = ctx.guild.get_role(roleID)
     if role == None:
-      return await ctx.reply("Role wasn't found.")
+      return await ctx.reply(embed=discord.Embed(description="Role wasn't found.", color=maincolor))
 
     if role in user.roles:
       await user.remove_roles(role)
@@ -2504,7 +2504,7 @@ async def mute(ctx, member : discord.Member=None, duration=None):
     try:
       
       if member.guild_permissions.administrator == True:
-        await ctx.reply("You don't have perms to mute this user.")
+        await ctx.reply(embed=discord.Embed(description="You can't mute this user.", color=maincolor))
         return
 
       letter = str(duration[-1])
@@ -2513,7 +2513,7 @@ async def mute(ctx, member : discord.Member=None, duration=None):
         
         timeout = int(duration[:-1]) * time_convert[duration[-1]]
         if timeout > 2419200:
-          await ctx.reply("The duration cannot be longer than 28 days!")
+          await ctx.reply(embed=discord.Embed(description="The duration cannot be longer than 28 days!", color=maincolor))
           return
         else:
           
@@ -2553,26 +2553,26 @@ async def mute(ctx, member : discord.Member=None, duration=None):
         return
           
     except ValueError:
-      await ctx.reply("Duration must be a number!")
+      await ctx.reply(embed=discord.Embed(description="Duration must be a number!", color=maincolor))
       return
   else:
     if member == None:
-      await ctx.reply("Please specify a user to timeout.")
+      await ctx.reply(embed=discord.Embed(description="Please specify a user to mute.", color=maincolor))
       return
     else:
       if duration == None:
-        await ctx.reply("Please state the duration `(e.g. of duration: 10s = 10 secs / 10h = 10 hours / 10d = 10 days)`")
+        await ctx.reply(embed=discord.Embed(description="Please state the duration `(e.g. of duration: 10s = 10 secs / 10h = 10 hours / 10d = 10 days)`", color=maincolor))
         return
 
 @bot.command()
 @commands.has_permissions(moderate_members=True)
 async def unmute(ctx, member : discord.Member=None):
   if member == None:
-    await ctx.reply("Specify a user to unmute.")
+    await ctx.reply(embed=discord.Embed(description="Please specify a user to unmute.", color=maincolor))
     return
   
   if member.timed_out == False:
-    return await ctx.reply("The user isn't muted.")
+    return await ctx.reply(embed=discord.Embed(description="The user isn't muted.", color=maincolor))
 
   await member.remove_timeout()
   
