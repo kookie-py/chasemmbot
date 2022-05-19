@@ -2384,7 +2384,7 @@ async def purge(ctx, limit=None):
   await c.send(embed=embed, file=discord.File(buffer, 'messages.txt'))
 
 @bot.command(aliases=['r'])
-@commands.has_permissions(manage_roles=True)
+@commands.has_permissions(administrator=True)
 async def role(ctx, user : discord.User=None, roleName=None):
   if user == None:
     return await ctx.reply("Specfiy a user.")
