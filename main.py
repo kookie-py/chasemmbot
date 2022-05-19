@@ -2138,7 +2138,7 @@ async def ban(ctx, user:discord.User=None, *, reason=None):
   if reason == None:
     reason = "No reason given."
   if user == None:
-    await ctx.reply("Please specify a user to ban.")
+    await ctx.reply(embed=discord.Embed(description="Please specify the user you would like to ban.", color=maincolor))
     return
   else:
     try:
@@ -2147,14 +2147,14 @@ async def ban(ctx, user:discord.User=None, *, reason=None):
     except NotFound:
       ban = False
     if ban == True:
-      await ctx.reply("The user is already banned.")
+      await ctx.reply(embed=discord.Embed(description="The user is already banned.", color=maincolor))
       return
     else:
       
       checkmember = guild.get_member(user.id)
       if checkmember != None:
         if checkmember.guild_permissions.administrator == True:
-          await ctx.reply("You don't have perms to ban this user.")
+          await ctx.reply(embed=discord.Embed(description="The user cannot be banned.", color=maincolor))
           return
       
       class yesCancel(discord.ui.View):
@@ -2174,7 +2174,7 @@ async def ban(ctx, user:discord.User=None, *, reason=None):
             pass
           await guild.ban(user, reason=reason, delete_message_days=0)
           emba = discord.Embed(color=maincolor)
-          emba.add_field(name=f"{user.name}#{user.discriminator} has been banned.", value=f"Reason: {reason}")
+          emba.set_author(name=f"{user.name}#{user.discriminator} has been banned.", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
           await interaction.message.reply(embed=emba)
 
           for child in self.children:
@@ -2221,7 +2221,7 @@ async def ban_error(ctx, error):
 async def unban(ctx, user:discord.User=None):
   guild = bot.get_guild(713213895073857548)
   if user == None:
-    await ctx.reply("Please specify a user to unban.")
+    await ctx.reply(embed=discord.Embed(description="Please specify the user you would like to unban.", color=maincolor))
     return
   else:
     try:
@@ -2230,11 +2230,12 @@ async def unban(ctx, user:discord.User=None):
     except NotFound:
       ban = False
     if ban == False:
-      await ctx.reply("The user is not banned.")
+      await ctx.reply(embed=discord.Embed(description="Th user is not banned.", color=maincolor))
       return
     else:
       await guild.unban(user)
-      emba = discord.Embed(description=f"{user.name}#{user.discriminator} has been unbanned.", color=maincolor)
+      emba = discord.Embed(color=maincolor)
+      emba.set_author(name=f"{user.name}#{user.discriminator} has been unbanned.", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
       await ctx.reply(embed=emba)
                 
       logs_c = bot.get_channel(763791851139629086)
@@ -2362,7 +2363,8 @@ async def purge(ctx, limit=None):
   
   msgs = await ctx.channel.purge(limit=limit+1, oldest_first=False, bulk=True)
   limit = limit-1
-  succembed = discord.Embed(description=f"Successfully purged {len(msgs)-1} messages.", color=maincolor)
+  succembed = discord.Embed(color=maincolor)
+  succembed.set_author(name=f"Successfully purged {len(msgs)-1} messages.", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
   await ctx.send(embed=succembed)
   
   msg_string = ""
@@ -2419,7 +2421,7 @@ async def role(ctx, user : discord.User=None, roleName=None):
     if role in user.roles:
       await user.remove_roles(role)
       embe = discord.Embed(color=maincolor)
-      embe.set_author(name=f"Revoked {closeststr[0]} from {user.name}#{user.discriminator}.", icon_url="https://images-ext-1.discordapp.net/external/Aue9ejC5ry1-iQKF7q5AxHAirITlIse3vKlanl4kfMo/%3Fsize%3D80%26quality%3Dlossless/https/cdn.discordapp.com/emojis/926397583981686814.png")
+      embe.set_author(name=f"Revoked {closeststr[0]} from {user.name}#{user.discriminator}.", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
     
       logs_c = bot.get_channel(763791851139629086)
       embed = discord.Embed(title="Role Removed", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
@@ -2434,7 +2436,7 @@ async def role(ctx, user : discord.User=None, roleName=None):
     else:
       await user.add_roles(role)
       embe = discord.Embed(color=maincolor)
-      embe.set_author(name=f"Applied {closeststr[0]} to {user.name}#{user.discriminator}.", icon_url="https://images-ext-1.discordapp.net/external/Aue9ejC5ry1-iQKF7q5AxHAirITlIse3vKlanl4kfMo/%3Fsize%3D80%26quality%3Dlossless/https/cdn.discordapp.com/emojis/926397583981686814.png")
+      embe.set_author(name=f"Applied {closeststr[0]} to {user.name}#{user.discriminator}.", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
 
       logs_c = bot.get_channel(763791851139629086)
       embed = discord.Embed(title="Role Added", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
@@ -2457,7 +2459,7 @@ async def role(ctx, user : discord.User=None, roleName=None):
     if role in user.roles:
       await user.remove_roles(role)
       embe = discord.Embed(color=maincolor)
-      embe.set_author(name=f"Revoked {role.name} from {user.name}#{user.discriminator}.", icon_url="https://images-ext-1.discordapp.net/external/Aue9ejC5ry1-iQKF7q5AxHAirITlIse3vKlanl4kfMo/%3Fsize%3D80%26quality%3Dlossless/https/cdn.discordapp.com/emojis/926397583981686814.png")
+      embe.set_author(name=f"Revoked {role.name} from {user.name}#{user.discriminator}.", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
 
       logs_c = bot.get_channel(763791851139629086)
       embed = discord.Embed(title="Role Removed", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
@@ -2472,7 +2474,7 @@ async def role(ctx, user : discord.User=None, roleName=None):
     else:
       await user.add_roles(role)
       embe = discord.Embed(color=maincolor)
-      embe.set_author(name=f"Applied {role.name} to {user.name}#{user.discriminator}.", icon_url="https://images-ext-1.discordapp.net/external/Aue9ejC5ry1-iQKF7q5AxHAirITlIse3vKlanl4kfMo/%3Fsize%3D80%26quality%3Dlossless/https/cdn.discordapp.com/emojis/926397583981686814.png")
+      embe.set_author(name=f"Applied {role.name} to {user.name}#{user.discriminator}.", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
 
       logs_c = bot.get_channel(763791851139629086)
       embed = discord.Embed(title="Role Added", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
@@ -2517,21 +2519,21 @@ async def mute(ctx, member : discord.Member=None, duration=None):
           
           time = timedelta(seconds=timeout)
           await member.timeout_for(time)
-          
+          emba = discord.Embed(color=maincolor)
           if letter == "s":
-            emba = discord.Embed(description=f"{member.name}#{member.discriminator} has been muted for {number} second/s", color=maincolor)
+            emba.set_author(name=f"{member.name}#{member.discriminator} has been muted for {number} second/s", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
             typee = f"{number} second/s"
             await ctx.reply(embed=emba)
           elif letter == "m":
-            emba = discord.Embed(description=f"{member.name}#{member.discriminator} has been muted for {number} minute/s", color=maincolor)
+            emba.set_author(name=f"{member.name}#{member.discriminator} has been muted for {number} minute/s", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
             typee = f"{number} minute/s"
             await ctx.reply(embed=emba)
           elif letter == "h":
-            emba = discord.Embed(description=f"{member.name}#{member.discriminator} has been muted for {number} hour/s", color=maincolor)
+            emba.set_author(name=f"{member.name}#{member.discriminator} has been muted for {number} hour/s", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
             typee = f"{number} hour/s"
             await ctx.reply(embed=emba)
           elif letter == "d":
-            emba = discord.Embed(description=f"{member.name}#{member.discriminator} has been muted for {number} day/s", color=maincolor)
+            emba.set_author(name=f"{member.name}#{member.discriminator} has been muted for {number} day/s", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
             typee = f"{number} day/s"
             await ctx.reply(embed=emba)
           
@@ -2574,7 +2576,8 @@ async def unmute(ctx, member : discord.Member=None):
 
   await member.remove_timeout()
   
-  emba = discord.Embed(description=f"{member.name}#{member.discriminator} has been unmuted.", color=maincolor)
+  emba = discord.Embed(color=maincolor)
+  emba.set_author(name=f"{member.name}#{member.discriminator} has been unmuted.", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
   await ctx.reply(embed=emba)
   
   logs_c = bot.get_channel(763791851139629086)
