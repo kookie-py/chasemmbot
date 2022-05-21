@@ -1109,7 +1109,7 @@ async def help(ctx):
   PREFIX = get_prefix()
   embed = discord.Embed(color=maincolor)
   embed.add_field(name=f"<:account:863985851079983105>・__Middleman__", value=f"───────────〃\n> ៹ 〃[`add` \"@user/userID\"] **-** Add user to a ticket.\n> ៹ 〃[`remove` \"@user/userID\"] **-** Remove user from a ticket.\n> ៹ 〃[`rename` \"name\"] **-** Rename a ticket.\n> ៹ 〃[`delete`/`del`] **-** Delete a ticket.\n> ៹ 〃[`mmban` \"@user/userID\" \"reason\"] **-** Blacklist a user.\n> ៹ 〃[`unmmban` \"@user/userID\"] **-** Unblacklist a user.\n> ៹ 〃[`close`] **-** Close a ticket.\n> ៹ 〃[`reopen`] **-** Reopen a closed ticket.\n> ៹ 〃[`transcript`] **-** Saves ticket's transcript.", inline=False)
-  embed.add_field(name=f"🛠️・__Moderation__", value=f"───────────〃\n> ៹ 〃[`ban/unban` \"@user/userID\"] **-** Bans/Unbans a user.\n> ៹ 〃[`snipe`/`snipe all`] **-** Snipes deleted message/s.\n> ៹ 〃[`purge` \"number\"] **-** Purges messages.\n> ៹ 〃[`role` \"@user/userID\"] **-** Adds/Revokes a role from/to a user.\n> ៹ 〃[`whois` \"@user/userID\"] **-** Sends info about a user.\n> ៹ 〃[`mute` \"@user/userID\" \"duration\"] **-** Mutes a user.\n> ៹ 〃[`unmute`] **-** Unmutes a user.", inline=False)
+  embed.add_field(name=f"🛠️・__Moderation__", value=f"───────────〃\n> ៹ 〃[`ban/unban` \"@user/userID\"] **-** Bans/Unbans a user.\n> ៹ 〃[`snipe`/`snipe all`] **-** Snipes deleted message/s.\n> ៹ 〃[`purge` \"number\"] **-** Purges messages.\n> ៹ 〃[`role` \"@user/userID\"] **-** Adds/Revokes a role from/to a user.\n> ៹ 〃[`whois` \"@user/userID\"] **-** Sends info about a user.\n> ៹ 〃[`mute` \"@user/userID\" \"duration\" \"reason\"] **-** Mutes a user.\n> ៹ 〃[`unmute`] **-** Unmutes a user.", inline=False)
   embed.add_field(name=f"👑・__Chase's__", value=f"───────────〃\n> ៹ 〃[`mm`] **-** Sends an embed with the discord mm's account info.\n> ៹ 〃[`pl`] **-** Sends an embed with the roblox mm's account info.\n> ៹ 〃[`prefix \"newPrefix\"`] **-** Changes the bot's prefix.\n> ៹ 〃[`i` \"username\"] **-** Get user info (Roblox).\n> ៹ 〃[`s` \"username\"] **-** Send friend request (Roblox).\n> ៹ 〃[`delf`] **-** Unfriend all users (Roblox).\n> ៹ 〃[`get_f`] **-** Get recent friend requests (Roblox).\n> ៹ 〃[`acc_f` \"username\"] **-** Accept friend request (Roblox).\n> ៹ 〃[`dec_f` \"username\"] **-** Decline friend request (Roblox).\n> ៹ 〃[`dec_all`] **-** Decline all friend requests (Roblox).\n> ៹ 〃[`dec_trades`] **-** Decline all inbound trades (Roblox).\n> ៹ 〃[`trades`] **-** Get inbound trades (Roblox).", inline=False)
   embed.set_footer(text=f"Prefix: {PREFIX}")
   await ctx.reply(embed=embed)
@@ -2495,8 +2495,11 @@ async def role(ctx, error):
 
 @bot.command(aliases=['m'])
 @commands.has_permissions(moderate_members=True)
-async def mute(ctx, member : discord.Member=None, duration=None):
+async def mute(ctx, member : discord.Member=None, duration=None, reason=None):
   time_convert = {"s":1, "m":60, "h":3600,"d":86400}
+  if reason == None:
+    reason = "No reason given."
+
   if member == None and duration==None:
     await ctx.reply(f"Invalid usuage.\n*`usuage: {get_prefix()}mute @user duration (e.g. of duration: 10s = 10 secs / 10h = 10 hours / 10d = 10 days)`*")
     return
@@ -2518,7 +2521,7 @@ async def mute(ctx, member : discord.Member=None, duration=None):
         else:
           
           time = timedelta(seconds=timeout)
-          await member.timeout_for(time)
+          await member.timeout_for(duration=time, reason=reason)
           emba = discord.Embed(color=maincolor)
           if letter == "s":
             emba.set_author(name=f"{member.name}#{member.discriminator} has been muted for {number} second/s", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
@@ -2545,6 +2548,7 @@ async def mute(ctx, member : discord.Member=None, duration=None):
           embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
           embed.add_field(name="Member", value=member.mention, inline=True)
           embed.add_field(name="Muted For", value=f"{typee} -> <t:{int(until.timestamp())}:f>", inline=True)
+          embed.add_field(name="Reason", value=reason, inline=True)
           embed.add_field(name="Channel", value=ctx.channel.mention, inline=True)
           await logs_c.send(embed=embed)
 
