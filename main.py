@@ -117,7 +117,10 @@ bot.load_extension("jishaku")
 @tasks.loop(seconds=10)
 async def time_status():
   my_date = datetime.now(pytz.timezone('America/New_York'))
-  time = my_date.strftime('%I:%M %p')
+  time = my_date.strftime('%I:%M%p')
+  firstdigs = int(time.split(":")[0])
+  secondpart = time.split(":")[1]
+  time = f"{firstdigs}:{secondpart}"
   await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"at {time}"), status=discord.Status.online)
 
 @bot.event
