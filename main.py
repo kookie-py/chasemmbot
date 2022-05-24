@@ -113,7 +113,13 @@ bot = MyBot(command_prefix=get_prefix(), intents=intents, case_insensitive=True,
 tracker = DiscordUtils.InviteTracker(bot)
 
 bot.load_extension("jishaku")
-  
+
+@tasks.loop(seconds=10)
+async def time_status():
+  my_date = datetime.now(pytz.timezone('America/New_York'))
+  time = my_date.strftime('%I:%M %p')
+  await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"Time: {time}"), status=discord.Status.online)
+
 @bot.event
 async def on_ready():
   await tracker.cache_invites()
@@ -123,6 +129,8 @@ async def on_ready():
   bot.add_view(Tickets1_off())
   bot.add_view(TicketsGameOn_TicketsLimsOff())
   bot.add_view(TicketsGameOff_TicketsLimsOn())
+  
+  time_status.start()
   
   print(f"Connected To Discord User: {bot.user.name}#{bot.user.discriminator}")
 
