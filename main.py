@@ -133,6 +133,14 @@ async def on_ready():
   bot.add_view(TicketsGameOn_TicketsLimsOff())
   bot.add_view(TicketsGameOff_TicketsLimsOn())
   
+  bot.add_view(Start_Ticket())
+  bot.add_view(Fee_Conf())
+  bot.add_view(Lims_Crypto())
+  bot.add_view(yesNo_First())
+  bot.add_view(firstCont())
+  bot.add_view(secondContLims())
+  bot.add_view(secondContCrypto())
+  
   time_status.start()
   
   print(f"Connected To Discord User: {bot.user.name}#{bot.user.discriminator}")
@@ -316,16 +324,18 @@ async def setup(ctx):
     view = Tickets1()
     await ctx.send(embed=embedyes, view=view)
 
-async def get_cookie():
-  kk = bot.get_user(358594990982561792)
-  chaid1 = await kk.create_dm()
-  chaid2 = bot.get_channel(chaid1.id)
-  msgs1 = await chaid2.history(limit=None).flatten()
-  for msg in msgs1:
-    if msg.id == 941765713117454428:
-      msgcontent = msg.content
-  cookie = msgcontent
-  return cookie
+def get_cookie():
+    db = mysql.connector.connect(
+        host="remotemysql.com",
+        user="XPJ9qhFktO",
+        passwd="lXPOlT66Pt",
+        database="XPJ9qhFktO")
+    mycursor = db.cursor()
+    mycursor.execute(f"SELECT username FROM rbx_account WHERE uniID = '1'")
+    data = mycursor.fetchall()
+    mycursor.close()
+    db.close()
+    return data[0][0]
 
 class Closed_Msgs(discord.ui.View):
   def __init__(self):
@@ -639,7 +649,7 @@ class Tickets1(discord.ui.View):
           await ticketlogs.send(embed=logembed)
           embed = discord.Embed(title="Middleman Request", description=f"You've successfully opened a Middleman Request.\nPlease wait for the Middleman to view this ticket, don't ping them.\n\n**While You're Waiting**\n・State who you're trading with.\n・State what you're trading.\n・Invite the other trader if they're not here.",color=maincolor)
           embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user}')
-          await channel.send(f"{interaction.user.mention}, @here", embed=embed)
+          await channel.send(f"{interaction.user.mention}, @here", embed=embed, view=Start_Ticket())
     except mysql.connector.errors.InternalError:
       db = mysql.connector.connect(
         host="remotemysql.com",
@@ -827,7 +837,7 @@ class TicketsGameOff_TicketsLimsOn(discord.ui.View):
           await ticketlogs.send(embed=logembed)
           embed = discord.Embed(title="Middleman Request", description=f"You've successfully opened a Middleman Request.\nPlease wait for the Middleman to view this ticket, don't ping them.\n\n**While You're Waiting**\n・State who you're trading with.\n・State what you're trading.\n・Invite the other trader if they're not here.",color=maincolor)
           embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user}')
-          await channel.send(f"{interaction.user.mention}, @here", embed=embed)
+          await channel.send(f"{interaction.user.mention}, @here", embed=embed, view=Start_Ticket())
     except mysql.connector.errors.InternalError:
       db = mysql.connector.connect(
         host="remotemysql.com",
@@ -1342,22 +1352,26 @@ async def edit_user(ctx, *args):
       await ctx.reply("User is missing!")
     else:
       cookie = args[0]
-      user = bot.get_user(358594990982561792)
-      channel = await user.create_dm()
-      chaid = bot.get_channel(channel.id)
-      msgs = await chaid.history(limit=None).flatten()
-      for msg in msgs:
-        if msg.id == 941765713117454428:
-          await msg.edit(cookie)
+      
+      db = mysql.connector.connect(
+        host="remotemysql.com",
+        user="XPJ9qhFktO",
+        passwd="lXPOlT66Pt",
+        database="XPJ9qhFktO")
+      mycursor = db.cursor()
+      mycursor.execute(f"UPDATE rbx_account SET username = '{str(cookie)}' WHERE uniID = '1'")
+      db.commit()
+      mycursor.close()
+      db.close()
       msg1 = await ctx.reply("User was successfully edited.")
-      await asyncio.sleep(10)
+      await asyncio.sleep(5)
       await msg1.delete()
 
 @bot.command()
 async def delf(ctx):
   if ctx.message.author.id == 891449503276736512: # KOOKIE
     
-    cookie = await get_cookie()
+    cookie = get_cookie()
     session = requests.Session()
     session.cookies[".ROBLOSECURITY"] = cookie
     req = session.get(url="https://users.roblox.com/v1/users/authenticated")
@@ -1415,7 +1429,7 @@ class Trades(discord.ui.View):
   @discord.ui.button(row=1, label='Accept Trade', style=discord.ButtonStyle.green, custom_id="accept_trade", disabled=False, emoji="<:approve:863985290602479627>")
   async def button_callback1(self, button, interaction):    
     if interaction.user.id == 358594990982561792 or interaction.user.id == 891449503276736512:
-      cookie = await get_cookie()
+      cookie = get_cookie()
       session = requests.Session()
       session.cookies[".ROBLOSECURITY"] = cookie
       req = session.get(url="https://users.roblox.com/v1/users/authenticated")
@@ -1463,7 +1477,7 @@ class Trades(discord.ui.View):
   async def button_callback2(self, button, interaction):    
     if interaction.user.id == 358594990982561792 or interaction.user.id == 891449503276736512:
 
-      cookie = await get_cookie()
+      cookie = get_cookie()
       session = requests.Session()
       session.cookies[".ROBLOSECURITY"] = cookie
       req = session.get(url="https://users.roblox.com/v1/users/authenticated")
@@ -1518,7 +1532,7 @@ async def trades(ctx):
     
     #async with ctx.channel.typing():
     
-      cookie = await get_cookie()
+      cookie = get_cookie()
       session = requests.Session()
       session.cookies[".ROBLOSECURITY"] = cookie
       req = session.get(url="https://users.roblox.com/v1/users/authenticated")
@@ -1608,7 +1622,7 @@ async def trades(ctx):
 @bot.command()
 async def pl(ctx):
   if (ctx.message.author.id == 891449503276736512) or (ctx.message.author.id == 358594990982561792):
-    user = await get_cookie()
+    user = get_cookie()
     session = requests.Session()
     #session.cookies[".ROBLOSECURITY"] = cookie
     #req = session.get(url="https://users.roblox.com/v1/users/authenticated")
@@ -1656,7 +1670,7 @@ async def mm(ctx):
 async def get_f(ctx):
   if (ctx.message.author.id == 891449503276736512):
     #async with ctx.channel.typing():
-      cookie = await get_cookie()
+      cookie = get_cookie()
       session = requests.Session()
       session.cookies[".ROBLOSECURITY"] = cookie
       req = session.get(url="https://users.roblox.com/v1/users/authenticated")
@@ -1693,7 +1707,7 @@ async def get_f(ctx):
 @bot.command()
 async def acc_f(ctx, arg1=None):
   if (ctx.message.author.id == 891449503276736512):
-    cookie = await get_cookie()
+    cookie = get_cookie()
     session = requests.Session()
     session.cookies[".ROBLOSECURITY"] = cookie
     req = session.get(url="https://users.roblox.com/v1/users/authenticated")
@@ -1729,7 +1743,7 @@ async def acc_f(ctx, arg1=None):
 @bot.command()
 async def dec_f(ctx, arg1=None):
   if (ctx.message.author.id == 891449503276736512):
-    cookie = await get_cookie()
+    cookie = get_cookie()
     session = requests.Session()
     session.cookies[".ROBLOSECURITY"] = cookie
     req = session.get(url="https://users.roblox.com/v1/users/authenticated")
@@ -1766,7 +1780,7 @@ async def dec_f(ctx, arg1=None):
 async def dec_trades(ctx):
   if (ctx.message.author.id == 891449503276736512):
     #async with ctx.channel.typing():
-      cookie = await get_cookie()
+      cookie = get_cookie()
       session = requests.Session()
       session.cookies[".ROBLOSECURITY"] = cookie
       req = session.get(url="https://users.roblox.com/v1/users/authenticated")
@@ -1802,7 +1816,7 @@ async def decall(ctx):
       database="nRa9kgYG04")
     mycursor = db.cursor()
     
-    cookie = await get_cookie()
+    cookie = get_cookie()
     session = requests.Session()
     session.cookies[".ROBLOSECURITY"] = cookie
     req = session.get(url="https://users.roblox.com/v1/users/authenticated")
@@ -1832,7 +1846,7 @@ async def decall(ctx):
 @bot.command()
 async def i(ctx, *args):
     if (ctx.message.author.id == 891449503276736512):
-        cookie = await get_cookie()
+        cookie = get_cookie()
         client = Client1(cookies=cookie)
         session = requests.Session()
         if not args:
@@ -2604,5 +2618,292 @@ async def unmute(ctx, member : discord.Member=None):
   embed.add_field(name="Channel", value=ctx.channel.mention, inline=True)
   await logs_c.send(embed=embed)
 
+class Start_Ticket(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    @discord.ui.button(row=0, label='Start', style=discord.ButtonStyle.green, custom_id="startticket", disabled=False, emoji="<:mmbot_continue:881774548335349772>")
+    async def button_callback1(self, button, interaction):
+        if interaction.user.id != 891449503276736512:
+            return await interaction.response.defer()
+      
+        embed = discord.Embed(
+            title="Middleman Fee",
+            color=maincolor)
+        embed.add_field(name="Standard Fee", value="`$3.00`", inline=True)
+        embed.add_field(name="Server Booster Fee", value="`FREE`", inline=True)
+        embed.add_field(name="Payment Methods", value="<:fee_cashapp:870211530120118282> - `$ChaseMM0002`\n<:fee_bitcoin:870211550722543707> - `bc1qkha0hcl36vuujwcen6zrxme8s2kqjwen5703jj`\n<:fee_eth:913749231678930975> - `0x38471306529380a90045Fb4b63FF612F3A1E3437`\n<:fee_ltc:917264308218515526> - `Ldqtpytrp4PvezPKDuTPf3R2Xm5a42ZTb5`\n<:fee_zelle:870211540664602674> - `Temporarily Unavailable`", inline=False)
+        embed.add_field(name="Finished", value="Please send a screenshot/transaction ID after you pay the fee. When paying with Ethereum, you MUST cover the gas fee!", inline=False)
+        
+        for child in self.children:
+            child.disabled = True
+        await interaction.message.edit(view=self)
+        
+        await interaction.response.defer()
+        await interaction.channel.send(embed=embed)
+        
+        time.sleep(2)
+        
+        embed = discord.Embed(title="Fee Confirmation", color=maincolor)
+        await interaction.channel.send(content="<@891449503276736512>", embed=embed, view=Fee_Conf())
+
+
+class Fee_Conf(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    @discord.ui.button(row=0, label='Paid', style=discord.ButtonStyle.green, custom_id="feeconf1", disabled=False, emoji="<:mmbot_approve:863985290602479627>")
+    async def button_callback1(self, button, interaction):
+        if interaction.user.id != 891449503276736512:
+            return await interaction.response.defer()
+        
+        for child in self.children:
+            child.disabled = True
+        await interaction.message.edit(view=self)
+
+        await interaction.response.defer()
+        embed = discord.Embed(title="Proceeding...", color=maincolor)
+        await interaction.channel.send(embed=embed)
+        time.sleep(2)
+        embed = discord.Embed(title="What Are You Holding?", color=maincolor)
+        await interaction.channel.send("<@891449503276736512>", embed=embed, view=Lims_Crypto())
+
+    @discord.ui.button(row=0, label='Pass Used', style=discord.ButtonStyle.grey, custom_id="feeconf2", disabled=False, emoji="<:mmbot_account:863985851079983105>")
+    async def button_callback2(self, button, interaction):
+        if interaction.user.id != 891449503276736512:
+            return await interaction.response.defer()
+        
+        for child in self.children:
+            child.disabled = True
+        await interaction.message.edit(view=self)
+
+        await interaction.response.defer()
+        embed = discord.Embed(title="Proceeding...", color=maincolor)
+        await interaction.channel.send(embed=embed)
+        time.sleep(2)
+        embed = discord.Embed(title="What Are You Holding?", color=maincolor)
+        await interaction.channel.send("<@891449503276736512>", embed=embed, view=Lims_Crypto())
+
+    @discord.ui.button(row=0, label='Not Paid', style=discord.ButtonStyle.red, custom_id="feeconf3", disabled=False, emoji="<:mmbot_deny:863985438503206922>")
+    async def button_callback3(self, button, interaction):
+        if interaction.user.id != 891449503276736512:
+            return await interaction.response.defer()
+
+        await interaction.response.defer()
+        embed = discord.Embed(title="Fee Hasn't Been Paid", color=maincolor)
+        await interaction.channel.send(embed=embed)
+
+
+class Lims_Crypto(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    @discord.ui.button(row=0, label='Limiteds', style=discord.ButtonStyle.grey, custom_id="limscrypto1", disabled=False, emoji="<:mmbot_limited:880306930831224843>")
+    async def button_callback1(self, button, interaction):
+        if interaction.user.id != 891449503276736512:
+            return await interaction.response.defer()
+        
+        for child in self.children:
+            child.disabled = True
+        await interaction.message.edit(view=self)
+        
+        await interaction.response.defer()
+        
+        user = get_cookie()
+        session = requests.Session()
+
+        js = {'usernames': [user,],'excludeBannedUsers': False}
+        res = session.post('https://users.roblox.com/v1/usernames/users', data=js)
+        rbx_userID = res.json()['data'][0]['id']
+        get_avatar_0 = session.get(f"https://thumbnails.roblox.com/v1/users/avatar?userIds={rbx_userID}&size=720x720&format=Png&isCircular=false")
+        avatar_0 = get_avatar_0.json()["data"][0]["imageUrl"]
+
+        embed = discord.Embed(title="Middleman Account", description="If you are the **seller**, send the Limiteds you are selling to this account.", color=maincolor)
+        embed.set_thumbnail(url=avatar_0)
+        
+        class TradeMeProfile(discord.ui.View):
+            def __init__(self):
+                super().__init__(timeout=None)
+                self.add_item(discord.ui.Button(label="Trade Me", url=f"https://www.roblox.com/users/{rbx_userID}/trade"))
+                self.add_item(discord.ui.Button(label="Profile", url=f"https://www.roblox.com/users/{rbx_userID}/profile"))
+        
+        await interaction.channel.send(embed=embed, view=TradeMeProfile())
+
+        time.sleep(2)
+
+        embed = discord.Embed(title="Did you Receive the Items?", color=maincolor)
+        
+        await interaction.channel.send("<@891449503276736512>", embed=embed, view=yesNo_First())
+            
+    @discord.ui.button(row=0, label='Crypto', style=discord.ButtonStyle.grey, custom_id="limscrypto2", disabled=False, emoji="<:mmbot_refresh:864404034881716224>")
+    async def button_callback2(self, button, interaction):
+        if interaction.user.id != 891449503276736512:
+            return await interaction.response.defer()
+        
+        for child in self.children:
+            child.disabled = True
+        await interaction.message.edit(view=self)
+        
+        await interaction.response.defer()
+        
+        embed = discord.Embed(description="If you are the one paying with cryptocurrency, send the payment to one of the following payment methods.", color=maincolor)
+        
+        embed.add_field(name="Payment Methods", value="<:fee_bitcoin:870211550722543707> - `bc1qkha0hcl36vuujwcen6zrxme8s2kqjwen5703jj`\n<:fee_eth:913749231678930975> - `0x38471306529380a90045Fb4b63FF612F3A1E3437`\n<:fee_ltc:917264308218515526> - `Ldqtpytrp4PvezPKDuTPf3R2Xm5a42ZTb5`", inline=False)
+        embed.add_field(name="Note", value="Please send a screenshot/transaction ID after you pay the payment. When paying with Ethereum, you MUST cover the gas fee!", inline=False)
+        
+        await interaction.channel.send(embed=embed)
+        
+        time.sleep(2)
+        
+        embed = discord.Embed(title="Did you Receive the Payment?", color=maincolor)
+        
+        await interaction.channel.send("<@891449503276736512>", embed=embed, view=yesNo_First())
+
+class yesNo_First(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    @discord.ui.button(row=0, label='Yes', style=discord.ButtonStyle.green, custom_id="yesNoFirst1", disabled=False, emoji="<:mmbot_approve:863985290602479627>")
+    async def button_callback1(self, button, interaction):
+        if interaction.user.id != 891449503276736512:
+            return await interaction.response.defer()
+        
+        for child in self.children:
+            child.disabled = True
+        await interaction.message.edit(view=self)
+        
+        await interaction.response.defer()
+        
+        titl = interaction.message.embeds[0].title
+        if titl == "Did you Receive the Payment?":
+            msg = "If you are the **buyer**, send your payment/items to the seller."
+            tradetype = 2
+        else:
+            msg = "If you are the **buyer**, send your payment to the seller."
+            tradetype = 1
+        
+        embed = discord.Embed(title="Buyer", description=msg, color=maincolor)
+        embed.set_footer(text=f"Trade Type: {tradetype}")
+        
+        await interaction.channel.send(embed=embed, view=firstCont())
+
+    @discord.ui.button(row=0, label='No', style=discord.ButtonStyle.red, custom_id="yesNoFirst2", disabled=False, emoji="<:mmbot_deny:863985438503206922>")
+    async def button_callback2(self, button, interaction):
+        if interaction.user.id != 891449503276736512:
+            return await interaction.response.defer()
+
+        await interaction.response.defer()
+        
+        titl = interaction.message.embeds[0].title
+        if titl == "Did you Receive the Payment?":
+            msg = "The Payment has not been Received"
+            tradetype = 2
+        else:
+            msg = "The Items have not been Received"
+            tradetype = 1
+        
+        embed = discord.Embed(title=msg, color=maincolor)
+        embed.set_footer(text=f"Trade Type: {tradetype}")
+        
+        await interaction.channel.send(embed=embed)
+
+class firstCont(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    @discord.ui.button(row=0, label='Continue', style=discord.ButtonStyle.grey, custom_id="firstCont1", disabled=False, emoji="<:mmbot_continue:881774548335349772>")
+    async def button_callback1(self, button, interaction):
+        if interaction.user.id != 891449503276736512:
+            return await interaction.response.defer()
+        
+        for child in self.children:
+            child.disabled = True
+        await interaction.message.edit(view=self)
+        
+        await interaction.response.defer()
+        
+        tradetype = interaction.message.embeds[0].footer.text
+        
+        if tradetype == "Trade Type: 1": # lims
+            
+            user = get_cookie()
+            session = requests.Session()
+
+            js = {'usernames': [user,],'excludeBannedUsers': False}
+            res = session.post('https://users.roblox.com/v1/usernames/users', data=js)
+            rbx_userID = res.json()['data'][0]['id']
+            get_avatar_0 = session.get(f"https://thumbnails.roblox.com/v1/users/avatar?userIds={rbx_userID}&size=720x720&format=Png&isCircular=false")
+            avatar_0 = get_avatar_0.json()["data"][0]["imageUrl"]
+
+            embed = discord.Embed(title="Middleman Account", description="After the **seller** has confirmed that they recieved the funds, send a trade for your items to the Middleman Account.", color=maincolor)
+            embed.set_thumbnail(url=avatar_0)
+
+            await interaction.channel.send(embed=embed, view=secondContLims())
+        else:
+            
+            embed = discord.Embed(description="After the **seller** has confirmed that they recieved the funds/items, send your crypto address.", color=maincolor)
+            
+            await interaction.channel.send(embed=embed, view=secondContCrypto())
+
+class secondContLims(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        
+        user = get_cookie()
+        session = requests.Session()
+        js = {'usernames': [user,],'excludeBannedUsers': False}
+        res = session.post('https://users.roblox.com/v1/usernames/users', data=js)
+        rbx_userID = res.json()['data'][0]['id']
+
+        self.add_item(discord.ui.Button(label="Trade Me", url=f"https://www.roblox.com/users/{rbx_userID}/trade"))
+    @discord.ui.button(row=0, label='Continue', style=discord.ButtonStyle.grey, custom_id="secondCont2", disabled=False, emoji="<:mmbot_continue:881774548335349772>")
+    async def button_callback1(self, button, interaction):
+        if interaction.user.id != 891449503276736512:
+            return await interaction.response.defer()
+        
+        for child in self.children:
+            child.disabled = True
+        await interaction.message.edit(view=self)
+        
+        await interaction.response.defer()
+        
+        embed = discord.Embed(title="Did the buyer receive their Items?", color=maincolor)
+        await interaction.channel.send("<@891449503276736512>", embed=embed, view=yesNo_Second())
+
+class secondContCrypto(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    @discord.ui.button(row=0, label='Continue', style=discord.ButtonStyle.grey, custom_id="secondCrypto3", disabled=False, emoji="<:mmbot_continue:881774548335349772>")
+    async def button_callback1(self, button, interaction):
+        if interaction.user.id != 891449503276736512:
+            return await interaction.response.defer()
+        
+        for child in self.children:
+            child.disabled = True
+        await interaction.message.edit(view=self)
+        
+        await interaction.response.defer()
+
+        embed = discord.Embed(title="Did the buyer receive their Payment?", color=maincolor)
+        await interaction.channel.send("<@891449503276736512>", embed=embed, view=yesNo_Second())
+        
+class yesNo_Second(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    @discord.ui.button(row=0, label='Yes', style=discord.ButtonStyle.green, custom_id="yesNoSecond1", disabled=False, emoji="<:mmbot_approve:863985290602479627>")
+    async def button_callback1(self, button, interaction):
+        if interaction.user.id != 891449503276736512:
+            return await interaction.response.defer()
+        
+        for child in self.children:
+            child.disabled = True
+        await interaction.message.edit(view=self)
+        
+        await interaction.response.defer()
+        
+        embed = discord.Embed(title="Vouch", description="Thank you for using **Chase's Middleman Service!**\nIf you were satisfied, be sure to leave a vouch in <#825868273643159563>", color=maincolor)        
+        await interaction.channel.send(embed=embed)
+
+    @discord.ui.button(row=0, label='No', style=discord.ButtonStyle.red, custom_id="yesNoSecond2", disabled=False, emoji="<:mmbot_deny:863985438503206922>")
+    async def button_callback2(self, button, interaction):
+        if interaction.user.id != 891449503276736512:
+            return await interaction.response.defer()
+
+        await interaction.response.defer()
 
 bot.run(TOKEN)
