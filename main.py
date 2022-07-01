@@ -104,7 +104,7 @@ async def check_messages():
 def perChaseage(part, whole):
   return round(100 * float(part)/float(whole), 2)
 
-TOKEN = "OTQxMTk1NTMyODU1MDQyMDc4.YgSapQ.9FxYA-TGU4S9Sw8sgvVt05Elj_s"
+TOKEN = "OTQxMTk1NTMyODU1MDQyMDc4.G_fMBP.FtXosi1p2R8hlvKPutNjwmBeC71Fjxvare8Y4o"
 
 intents = discord.Intents.all()
 intents.members = True
