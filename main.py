@@ -1874,7 +1874,7 @@ async def off(ctx):
   if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
     await ctx.message.delete()
     t_channel = bot.get_channel(918146416747102249)
-    t_msg = await t_channel.fetch_message(907176329064120361)
+    t_msg = await t_channel.fetch_message(997565650690134086)
     view = Off_AUTO_CRYPTO_Tickets()
     await t_msg.edit(view=view)
 
@@ -1882,8 +1882,8 @@ async def off(ctx):
 async def on(ctx):
   if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
     await ctx.message.delete()
-    t_channel = bot.get_channel(832432823537369098)
-    t_msg = await t_channel.fetch_message(907176329064120361)
+    t_channel = bot.get_channel(918146416747102249)
+    t_msg = await t_channel.fetch_message(997565650690134086)
     view = AUTO_CRYPTO_Tickets()
     await t_msg.edit(view=view)
 
