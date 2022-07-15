@@ -1858,8 +1858,8 @@ class Use_MMPass(discord.ui.View):
     await ticketdata_msg.edit(ticketdata)
 
 @bot.command()
-async def test(ctx):
-  if ctx.author.id == 358594990982561792:
+async def setup(ctx):
+  if ctx.author.id == 358594990982561792 or ctx.author.id == 891449503276736512:
     embed = discord.Embed(title="Automated Request", color=MAINCOLOR)
     embed.add_field(name="Fee Payments", value="Currently we only accept BTC, however you can buy passes with LTC/ETH.", inline=False)
     embed.add_field(name="Instructions", value="Read the bots instructions carefully, following them incorrectly may result in the loss of your funds.", inline=False)
@@ -1868,8 +1868,25 @@ async def test(ctx):
     embedss = []
     embedss.append(embed)
     embedss.append(embed2)
-
     await ctx.send(embeds=embedss, view=AUTO_CRYPTO_Tickets())
+
+@bot.command()
+async def off(ctx):
+  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
+    await ctx.message.delete()
+    t_channel = bot.get_channel(918146416747102249)
+    t_msg = await t_channel.fetch_message(907176329064120361)
+    view = Off_AUTO_CRYPTO_Tickets()
+    await t_msg.edit(view=view)
+
+@bot.command()
+async def on(ctx):
+  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
+    await ctx.message.delete()
+    t_channel = bot.get_channel(832432823537369098)
+    t_msg = await t_channel.fetch_message(907176329064120361)
+    view = AUTO_CRYPTO_Tickets()
+    await t_msg.edit(view=view)
 
 class Off_AUTO_CRYPTO_Tickets(discord.ui.View):
   def __init__(self):
