@@ -890,7 +890,7 @@ async def on_message(message):
                   return
                 
                 usd = float(ticketdata['trade_amount_usd'])
-                usdprice = session.get("https://apirone.com/api/v2/ticker?btc").json().get('usd')
+                usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
                 fee = usd * 0.005
                 if fee < 1.00:
                   fee = 1.00
@@ -1786,7 +1786,7 @@ class Use_MMPass(discord.ui.View):
     ticketdata = ast.literal_eval(ticketdata_msg.content)
 
     usd = float(ticketdata['trade_amount_usd'])
-    usdprice = session.get("https://apirone.com/api/v2/ticker?btc").json().get('usd')
+    usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
     totalusd = usd
     btc = shorten_btc(totalusd/usdprice)
     json_data = {'currency': 'btc'}
@@ -1832,7 +1832,7 @@ class Use_MMPass(discord.ui.View):
     ticketdata = ast.literal_eval(ticketdata_msg.content)
 
     usd = float(ticketdata['trade_amount_usd'])
-    usdprice = session.get("https://apirone.com/api/v2/ticker?btc").json().get('usd')
+    usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
     fee = usd * 0.005
     if fee < 1.00:
       fee = 1.00
@@ -2122,7 +2122,7 @@ class PasteAddress(discord.ui.View):
     fee_amount_usd = float(ticketdata['fee_amount_usd'])
     promised_usd_amount = trade_amount_usd+fee_amount_usd
 
-    usdprice = session.get("https://apirone.com/api/v2/ticker?btc").json().get('usd')
+    usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
     received_usd_amount = float(shorten(totalbtc*usdprice))
 
     continue_trade = False
@@ -2368,7 +2368,7 @@ async def redeem(ctx, addy=None):
         for i in res.json()['txs']:
           txid = i
 
-        usdprice = session.get("https://apirone.com/api/v2/ticker?btc").json().get('usd')
+        usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
 
         totalam = res.json()['amount']/100000000
         useam = shorten(usdprice*totalam)
@@ -2394,7 +2394,7 @@ async def redeem(ctx, addy=None):
 
         await interaction.message.delete()
     
-    usdprice = session.get("https://apirone.com/api/v2/ticker?btc").json().get('usd')
+    usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
     useame = shorten(usdprice*float(ticketdata['trade_amount_cry']))
 
     embed=discord.Embed(title="Are you sure that this is your address?", description=f"> By clicking \"Yes\", the bot will send `${useame}` | `{shorten_btc(float(ticketdata['trade_amount_cry']))}` to that address.", color=MAINCOLOR)
