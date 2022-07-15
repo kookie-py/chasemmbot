@@ -4,7 +4,7 @@ from re import I
 import discord
 import discord.ui
 import asyncio
-from discord import NotFound, Forbidden
+from discord import NotFound, Forbidden, HTTPException
 from discord.channel import CategoryChannel
 from discord.embeds import Embed
 from discord.ext.commands import errors
@@ -29,20 +29,24 @@ import requests
 import csv
 import arrow
 import math
-import mysql.connector
 import humanfriendly
 import DiscordUtils
 import difflib
 import random, string
+import ast
 
+BOT_PREFIX = "$"
 AUTOCRYPTO_CATEGORY_ID = 934103126468853760
 PASSES_CATEGORY_ID = 927037368656068678
 AUTOCRYPTO_LOGS_ID = 925662272905412679
 AUTOCRYPTO_TRANSCRIPTS_ID = 925662272905412679
 BLACKLIST_ROLE_ID = 832003962806861834
+#MM_ROLE_ID = 944100142607384586
 MM_ROLE_ID = 944100142607384586
 GUILD_ID = 713213895073857548
 MMPASS_ID = 879197625918844959
+DB_SERVERID = 996501416304726106
+MAIN_INFOID = 996519114233368696
 APIRONE_ACCOUNT_ID = "9e5141f8b8c6fb2fe3cbb5be88bf2b98"
 APIRONE_TRANSFER_ID = "FI7pmXlpnnq8DQQt3aEiOgQo3BnIklKs"
 SUCCCOLOR = 0x57f287
@@ -64,18 +68,6 @@ class MyBot(commands.Bot):
 
 session = requests.Session()
 
-def get_prefix():
-    db = mysql.connector.connect(
-      host="remotemysql.com",
-      user="XPJ9qhFktO",
-      passwd="lXPOlT66Pt",
-      database="XPJ9qhFktO")
-    mycursor = db.cursor()
-    mycursor.execute(f"SELECT prefix FROM b_prefix WHERE uniID = 1")
-    for i in mycursor:
-      prefix = str(i[0])
-    return prefix
-
 def shorten(number):
   return float("{:.2f}".format(number))
 
@@ -93,85 +85,55 @@ def getWholeFloat(number):
 
 @tasks.loop(seconds=10)
 async def tx_checker():
-  try:
     global session
+    dbserver = bot.get_guild(DB_SERVERID)
+    channels = dbserver.text_channels
+    for cha in channels:
+      try:
+        channelcheck = int(cha.name.split('-')[1])
+        if cha.name.split("-")[2] == "auto":
+          dbchannel = cha
+          ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+          ticketdata = ast.literal_eval(ticketdata_msg.content)
 
-    db = mysql.connector.connect(
-      host="remotemysql.com",
-      user="uDNB0NiyRu",
-      passwd="AAxYedadAw",
-      database="uDNB0NiyRu")
-    mycursor = db.cursor()
-    mycursor.execute("SELECT * FROM autocrypto_tickets_info")
-    data = mycursor.fetchall()
-
-    for i in data:
-      trade_stated = i[5]
-      trader_added = i[6]
-      ticket_status = i[11]
-      hold_address = i[14]
-      crypto_received = i[7]
-      payment_detected = i[8]
-      trader_seller_id = i[3]
-      trader_receiver_id = i[4]
-      channel_id = i[0]
-
-      if (trade_stated == "Yes") and (trader_added == "Yes") and (ticket_status == "Active") and (hold_address != "No") and (crypto_received == "No") and (payment_detected == "Yes"):
-
-        res = session.get(f"https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/history?currency=btc&q=item_type:receipt,address:{hold_address}").json()
-
-        txString = ""
-        unconf = 0
-        for i in res['items']:
-          if i['is_confirmed'] == False:
-            unconf += 1
-
-          status = ""
-          if i['is_confirmed'] == True:
-            status = "✅ Confirmed ✅"
-          else:
-            status = "❌ Unconfirmed ❌"
-          txString += f"> ID: [{i['id']}](https://blockchair.com/bitcoin/transaction/`{i['id']})\n> Status: {status}\n\n"
-
-        if unconf == 0:
-          embede = discord.Embed(title="Transaction/s Confirmed", description="The transaction/s have reached 1 confirmation, you may continue with your deal now.", color=SUCCCOLOR)
-          embede.add_field(name="Transaction/s Hash", value=txString, inline=False)
-
-          c = bot.get_channel(channel_id)
-          await c.send(f"<@{trader_receiver_id}> You may give your trader the promised items/money.\n\n<@{trader_seller_id}> Once your trader gives you your stuff, use the `$confirm` command to let them withdraw their crypto.", embed=embede)
-
-          mycursor.execute(f"UPDATE autocrypto_tickets_info SET crypto_received=%s WHERE channel_id=%s", ("Yes", channel_id))
-          db.commit()
-
-        time.sleep(1)
-
-      else:
-        mycursor.close();db.close()
-        return
-
-    mycursor.close();db.close()
-  except Exception:
-    return
-
-@tasks.loop(minutes=30)
-async def check_messages():
-  db = mysql.connector.connect(
-    host="remotemysql.com",
-    user="XPJ9qhFktO",
-    passwd="lXPOlT66Pt",
-    database="XPJ9qhFktO")
-  mycursor = db.cursor()
-
-  mycursor.execute(f"SELECT * FROM snipe_info")
-  data = mycursor.fetchall()
-
-  for i in data:
-    timestamp = i[3]
-    if time.time() - timestamp > 43200:
-      mycursor.execute(f"DELETE FROM snipe_info WHERE uni_id = '{i[4]}'")
-  db.commit()
-  mycursor.close()
-  db.close()
+          trade_stated = ticketdata['trade_stated']
+          trader_added = ticketdata['trader_added']
+          ticket_status = ticketdata['ticket_status']
+          hold_address = ticketdata['hold_address']
+          crypto_received = ticketdata['crypto_received']
+          payment_detected = ticketdata['payment_detected']
+          trader_seller_id = int(ticketdata['trader_seller_id'])
+          trader_receiver_id = int(ticketdata['trader_receiver_id'])
+          channel_id = int(ticketdata['channel_id'])
+          skiptx = str(ticketdata['skip_tx'])
+          if (trade_stated == "Yes") and (trader_added == "Yes") and (ticket_status == "Active") and (hold_address != "No") and (crypto_received == "No") and (payment_detected == "Yes"):
+            res = session.get(f"https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/history?btc&q=item_type:receipt,address:{hold_address}").json()
+            txString = ""
+            unconf = 0
+            for i in res['items']:
+              if i['is_confirmed'] == False:
+                unconf += 1
+              status = ""
+              if i['is_confirmed'] == True:
+                status = "<a:checkmarktick:996838559766020266> Confirmed <a:checkmarktick:996838559766020266>"
+              else:
+                status = "<a:load:992127235265925171> Unconfirmed <a:load:992127235265925171>"
+              txString += f"> ID: [Click Here](https://blockchair.com/bitcoin/transaction/`{i['id']})\n> Status: {status}\n\n"
+            if unconf == 0:
+              ticketdata['crypto_received'] = "Yes"
+              await ticketdata_msg.edit(ticketdata)
+              if skiptx == "No":
+                embede = discord.Embed(title="Transaction/s Confirmed", description="The transaction/s have reached 1 confirmation, you may continue with your deal now.", color=SUCCCOLOR)
+                embede.add_field(name="Transaction/s Hash", value=txString, inline=False)
+                c = bot.get_channel(channel_id)
+                await c.send(f"<@{trader_receiver_id}> You may give your trader the promised items/money.\n\n<@{trader_seller_id}> Once your trader gives you your stuff, use the `$confirm` command to let them withdraw their crypto.", embed=embede)
+              elif skiptx == "Yes":
+                c = bot.get_channel(channel_id)
+                await c.send(f"<@{trader_receiver_id}> You can now withdraw your crypto.\nUse the command `$redeem addy`")
+      except IndexError:
+        pass
+      except ValueError:
+        pass
 
 def perChaseage(part, whole):
   return round(100 * float(part)/float(whole), 2)
@@ -181,7 +143,7 @@ TOKEN = "OTQxMTk1NTMyODU1MDQyMDc4.G_fMBP.FtXosi1p2R8hlvKPutNjwmBeC71Fjxvare8Y4o"
 intents = discord.Intents.all()
 intents.members = True
 
-bot = MyBot(command_prefix=get_prefix(), intents=intents, case_insensitive=True, help_command=None)
+bot = MyBot(command_prefix=BOT_PREFIX, intents=intents, case_insensitive=True, help_command=None)
 tracker = DiscordUtils.InviteTracker(bot)
 
 bot.load_extension("jishaku")
@@ -199,55 +161,50 @@ async def time_status():
 async def on_ready():
   await tracker.cache_invites()
 
+  dbchannel = bot.get_channel(MAIN_INFOID)
+  ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+  ticketdata = ast.literal_eval(ticketdata_msg.content)
+  bot.command_prefix = str(ticketdata['prefix'])
+
   bot.add_view(Closed_Msgs())
   bot.add_view(AUTO_CRYPTO_Tickets())
   bot.add_view(SellerOrBuyer())
   bot.add_view(PasteAddress())
   bot.add_view(Use_MMPass())
+  bot.add_view(SkipTx())
 
   tx_checker.start()
   time_status.start()
-  check_messages.start()
   
   print(f"Connected To Discord User: {bot.user.name}#{bot.user.discriminator}")
 
 @bot.event
 async def on_invite_create(invite):
+  if invite.guild.id == GUILD_ID:
     await tracker.update_invite_cache(invite)
 
 @bot.event
 async def on_invite_delete(invite):
+  if invite.guild.id == GUILD_ID:
     await tracker.remove_invite_cache(invite)
-
-@bot.command()
-async def aaa(ctx):
-  await ctx.send(1)
 
 @bot.command()
 async def prefix(ctx, arg1=None):
   if ctx.author.id == 891449503276736512 or ctx.author.id == 358594990982561792:
     if arg1==None:
-      PREFIX = get_prefix()
+      PREFIX = BOT_PREFIX
       await ctx.reply(f"Please specify a prefix to set!\n*`usage: {PREFIX}prefix $`*")
-    else:
+    else: 
+      dbchannel = bot.get_channel(MAIN_INFOID)
+      ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+      ticketdata = ast.literal_eval(ticketdata_msg.content)
+      ticketdata['prefix'] = str(arg1)
+      await ticketdata_msg.edit(ticketdata)
       
+      bot.command_prefix = str(arg1)
       
-      #async with ctx.channel.typing():
-      
-        db = mysql.connector.connect(
-          host="remotemysql.com",
-          user="XPJ9qhFktO",
-          passwd="lXPOlT66Pt",
-          database="XPJ9qhFktO")
-        mycursor = db.cursor()
-        
-        mycursor.execute(f"UPDATE b_prefix SET prefix = '{str(arg1)}' WHERE uniID = '1'")
-        db.commit()
-        
-        bot.command_prefix = str(arg1)
-        
-        embed = discord.Embed(title="Prefix Changed", description=f"The prefix has been changed to `{arg1}`", color=MAINCOLOR)
-        await ctx.reply(embed=embed)
+      embed = discord.Embed(title="Prefix Changed", description=f"The prefix has been changed to `{arg1}`", color=MAINCOLOR)
+      await ctx.reply(embed=embed)
 
 @bot.event
 async def on_member_join(member):
@@ -281,35 +238,32 @@ async def on_member_remove(member):
     embed.add_field(name=f"Member", value=f"{member.id} - {member.mention} - {member.name}#{member.discriminator}", inline=False)
     embed.add_field(name=f"Account Creation", value=f"<t:{createdAtDate}> - <t:{createdAtDate}:R>", inline=False)
     await c.send(embed=embed)
-    
-    db = mysql.connector.connect(
-      host="remotemysql.com",
-      user="uDNB0NiyRu",
-      passwd="AAxYedadAw",
-      database="uDNB0NiyRu")
-    mycursor = db.cursor()
-    mycursor.execute(f"SELECT * FROM added_info")
-    for i in mycursor:
-      if int(i[0]) == member.id: # if member is in added in tickets
-        ticket_c = bot.get_channel(int(i[1])) # get ticket channel
-        await ticket_c.send(f"*{member.mention} has left the server!*")
-    mycursor.execute(f"DELETE FROM added_info WHERE userID = '{member.id}'")
-    db.commit()
-    mycursor.close()
-    db.close()
 
-def get_cookie():
-    db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
-    mycursor = db.cursor()
-    mycursor.execute(f"SELECT username FROM rbx_account WHERE uniID = '1'")
-    data = mycursor.fetchall()
-    mycursor.close()
-    db.close()
-    return data[0][0]
+    dbserver = bot.get_guild(DB_SERVERID)
+    channels = dbserver.text_channels
+    for i in channels:
+      try:
+        channelid = int(i.name.split('-')[1])
+        dbchannel = i
+        ticketdata_msg2 = await dbchannel.history(limit=2, oldest_first=True).flatten();ticketdata_msg2=ticketdata_msg2[1]
+        ticketdata2 = ast.literal_eval(ticketdata_msg2.content)
+        if {"user_id": member.id, "channel_id": channelid} in ticketdata2:
+          ticket_c = bot.get_channel(channelid) # get ticket channel
+          dbchannel = i
+          await ticket_c.send(f"*{member.mention} has left the server!*")
+          ticketdata2.remove({"user_id": member.id, "channel_id": ticket_c.id})
+          await ticketdata_msg2.edit(ticketdata2)
+          break
+      except IndexError:
+        pass
+      except ValueError:
+        pass
+
+async def get_cookie():
+  dbchannel = bot.get_channel(MAIN_INFOID)
+  ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+  ticketdata = ast.literal_eval(ticketdata_msg.content)
+  return ticketdata['rbx_account']
 
 class Closed_Msgs(discord.ui.View):
   def __init__(self):
@@ -319,28 +273,24 @@ class Closed_Msgs(discord.ui.View):
     #async with interaction.channel.typing():
       transcripts = bot.get_channel(AUTOCRYPTO_LOGS_ID)
       ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="uDNB0NiyRu",
-        passwd="AAxYedadAw",
-        database="uDNB0NiyRu")
-      mycursor = db.cursor()
+
+      currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
+      dbchannel_id = int(currentticket[0].content.split("||")[1])
+      dbchannel = bot.get_channel(dbchannel_id)
+      ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+      ticketdata = ast.literal_eval(ticketdata_msg.content)
+
       Status = True
-      mycursor.execute(f"SELECT ticket_status FROM autocrypto_tickets_info WHERE channel_id = '{interaction.channel_id}'")
-      for x in mycursor: # check if ticket is opened or closed
-        if str(x[0]) == "Delete":
-          await interaction.channel.send(f"*{interaction.user.mention} The ticket is already being deleted!*")
-          Status = False
-          mycursor.close()
-          await interaction.response.defer()
-          return
+      if str(ticketdata['ticket_status']) == "Delete":
+        await interaction.channel.send(f"*{interaction.user.mention} The ticket is already being deleted!*")
+        Status = False
+        await interaction.response.defer()
+        return
       if Status == True:
         await interaction.response.defer()
         await interaction.channel.send(embed=discord.Embed(description=f'Deleting this ticket..', color=MAINCOLOR))
-        mycursor.execute(f"UPDATE autocrypto_tickets_info SET ticket_status = 'Delete' WHERE channel_id = '{interaction.channel_id}'")
-        mycursor.execute(f"DELETE FROM added_info WHERE channelID = '{interaction.channel_id}'")
-        mycursor.execute(f"DELETE FROM closed_msgs WHERE channelID = '{interaction.channel_id}'")
-        db.commit()
+        ticketdata['ticket_status'] = "Delete"
+        await ticketdata_msg.edit(ticketdata)
         users={}
         transcript = await chat_exporter.export(channel=interaction.channel, limit=None, tz_info="America/Los_Angeles")
         if transcript is None:
@@ -377,134 +327,123 @@ class Closed_Msgs(discord.ui.View):
           logembed.add_field(name=f"Category", value=f"{interaction.channel.category.name} | {interaction.channel.category.id}", inline=False)
         logembed.set_author(name=f"Action: Ticket Deleted", icon_url=f"{interaction.user.display_avatar.url}")
         await ticketlogs.send(embed=logembed)
-        mycursor.execute(f"DELETE FROM autocrypto_tickets_info WHERE channelID = '{interaction.channel_id}'")
-        db.commit()
-        mycursor.close()
-        db.close()
         await interaction.channel.delete()
+
   @discord.ui.button(row=0, label='Reopen', style=discord.ButtonStyle.grey, custom_id="reopenticket", disabled=False, emoji="<:cancel:881774578035228703>")
   async def button_callback2(self, button, interaction):
-    #async with interaction.channel.typing():
-      await interaction.response.defer()
-      transcripts = bot.get_channel(AUTOCRYPTO_LOGS_ID)
-      loading_embed = discord.Embed(color = 0xffffff)
-      loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
-      guild = bot.get_guild(GUILD_ID)
-      ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="uDNB0NiyRu",
-        passwd="AAxYedadAw",
-        database="uDNB0NiyRu")
-      mycursor = db.cursor()
-      guild = bot.get_guild(GUILD_ID)
-      mycursor.execute(f"SELECT msgID FROM closed_msgs WHERE channelID = '{interaction.channel.id}'")
-      for i in mycursor:
-        closed_msg = await interaction.channel.fetch_message(int(i[0]))
-      await closed_msg.delete()
-      mycursor.execute(f"SELECT userID FROM added_info WHERE channelID = '{interaction.channel_id}'")
-      for y in mycursor:
-        users = guild.get_member(int(y[0]))
-        await interaction.channel.set_permissions(users, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
-      await interaction.channel.send(embed=discord.Embed(title="Ticket Opened", description="The ticket has been re-opened.", color=MAINCOLOR))
-      logembed = discord.Embed(color=MAINCOLOR)
-      logembed.add_field(name=f"User Responsible", value=f"{interaction.user.mention} | {interaction.user.id}", inline=False)
-      logembed.add_field(name=f"Channel", value=f"{interaction.channel.name} | {interaction.channel.id}", inline=False)
-      if interaction.channel.category != None:
-        logembed.add_field(name=f"Category", value=f"{interaction.channel.category.name} | {interaction.channel.category.id}", inline=False)
-      logembed.set_author(name=f"Action: Ticket Reopened", icon_url=f"{interaction.user.display_avatar.url}")
-      await ticketlogs.send(embed=logembed)
-      mycursor.execute(f"UPDATE autocrypto_tickets_info SET ticket_status = 'Open' WHERE channel_id = '{interaction.channel_id}'")
-      mycursor.execute(f"DELETE FROM closed_msgs WHERE channelID = '{interaction.channel_id}'")
-      db.commit()
-      mycursor.close()
-      db.close()
+    await interaction.response.defer()
+    transcripts = bot.get_channel(AUTOCRYPTO_LOGS_ID)
+    loading_embed = discord.Embed(color = 0xffffff)
+    loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
+    guild = bot.get_guild(GUILD_ID)
+    ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
+
+    currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
+    dbchannel_id = int(currentticket[0].content.split("||")[1])
+    dbchannel = bot.get_channel(dbchannel_id)
+    ticketdata_msg = await dbchannel.history(limit=2, oldest_first=True).flatten()
+    ticketdata_msg1=ticketdata_msg[0]
+    ticketdata_msg2=ticketdata_msg[1]
+
+    ticketdata = ast.literal_eval(ticketdata_msg1.content)
+    ticketdata2 = ast.literal_eval(ticketdata_msg2.content)
+
+    closed_msg = await interaction.channel.fetch_message(int(ticketdata['closed_msg_id']))
+    await closed_msg.delete()
+    for added_data in ticketdata2:
+      users = guild.get_member(int(added_data['user_id']))
+      await interaction.channel.set_permissions(users, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
+    await interaction.channel.send(embed=discord.Embed(title="Ticket Opened", description="The ticket has been re-opened.", color=MAINCOLOR))
+    logembed = discord.Embed(color=MAINCOLOR)
+    logembed.add_field(name=f"User Responsible", value=f"{interaction.user.mention} | {interaction.user.id}", inline=False)
+    logembed.add_field(name=f"Channel", value=f"{interaction.channel.name} | {interaction.channel.id}", inline=False)
+    if interaction.channel.category != None:
+      logembed.add_field(name=f"Category", value=f"{interaction.channel.category.name} | {interaction.channel.category.id}", inline=False)
+    logembed.set_author(name=f"Action: Ticket Reopened", icon_url=f"{interaction.user.display_avatar.url}")
+    await ticketlogs.send(embed=logembed)
+    ticketdata['ticket_status'] = "Open"
+    ticketdata['closed_msg_id'] = 0
+    await ticketdata_msg1.edit(ticketdata)
+
   @discord.ui.button(row=0, label='Save Transcript', style=discord.ButtonStyle.blurple, custom_id="savets", disabled=False, emoji="<:save:889899650549706834>")
   async def button_callback3(self, button, interaction):
-    #async with interaction.channel.typing():
-      transcripts = bot.get_channel(AUTOCRYPTO_LOGS_ID)
-      loading_embed = discord.Embed(color = 0xffffff)
-      loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
-      users={}
-      await interaction.response.send_message(content=f"{interaction.user.mention}", embed=loading_embed, ephemeral=False)
-      transcript = await chat_exporter.export(channel=interaction.channel, limit=None, tz_info="America/Los_Angeles")
-      if transcript is None:
-        return
-      transcript_file = discord.File(io.BytesIO(transcript.encode()), filename=f"transcript-{interaction.channel.name}.html")
-      transcriptembed = discord.Embed(color=0x1EC45C)
-      transcriptembed.add_field(name="Author", value=f"{interaction.user.mention} | {interaction.user.id}", inline=True)
-      transcriptembed.add_field(name="Ticket", value=f"{interaction.channel.name} | {interaction.channel_id}", inline=True)
-      if interaction.channel.category != None:
-        transcriptembed.add_field(name="Category", value=f"{interaction.channel.category.name} | {interaction.channel.category.id}", inline=True)
-      mess = await transcripts.send(embed=transcriptembed, file=transcript_file)
-      attachment = mess.attachments[0]
-      messages = await interaction.channel.history(limit=None).flatten()
-      user_string,user_transcript_string="",""
-      for msge in messages[::1]:
-          if msge.author.id in users.keys():
-            users[msge.author.id]+=1
-          else:
-            users[msge.author.id]=1
-      b = sorted(users.items(), key=lambda x: x[1], reverse=True)
-      try:
-        for k in b:
-          user = await bot.fetch_user(int(k[0]))
-          user_string+=f"{k[1]} | {user.mention} | {user.name}#{user.discriminator}\n"
-      except NotFound:
-        pass
-      await mess.edit(embed=transcriptembed.add_field(name="**Direct Transcript**", value=f"[Direct Transcript](https://tickettool.xyz/direct?url={attachment.url})", inline=True))
-      await mess.edit(embed=transcriptembed.add_field(name="**Users in transcript**", value=f"{user_string}", inline=True))
-      loading_embed1 = discord.Embed(title="Ticket Saved", description=f"All ticket information has been saved to **<#AUTOCRYPTO_LOGS_ID>**.",color = MAINCOLOR)
-      await interaction.edit_original_message(content=f"{interaction.user.mention}", embed=loading_embed1)
+    transcripts = bot.get_channel(AUTOCRYPTO_LOGS_ID)
+    loading_embed = discord.Embed(color = 0xffffff)
+    loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
+    users={}
+    await interaction.response.send_message(content=f"{interaction.user.mention}", embed=loading_embed, ephemeral=False)
+    transcript = await chat_exporter.export(channel=interaction.channel, limit=None, tz_info="America/Los_Angeles")
+    if transcript is None:
+      return
+    transcript_file = discord.File(io.BytesIO(transcript.encode()), filename=f"transcript-{interaction.channel.name}.html")
+    transcriptembed = discord.Embed(color=0x1EC45C)
+    transcriptembed.add_field(name="Author", value=f"{interaction.user.mention} | {interaction.user.id}", inline=True)
+    transcriptembed.add_field(name="Ticket", value=f"{interaction.channel.name} | {interaction.channel_id}", inline=True)
+    if interaction.channel.category != None:
+      transcriptembed.add_field(name="Category", value=f"{interaction.channel.category.name} | {interaction.channel.category.id}", inline=True)
+    mess = await transcripts.send(embed=transcriptembed, file=transcript_file)
+    attachment = mess.attachments[0]
+    messages = await interaction.channel.history(limit=None).flatten()
+    user_string,user_transcript_string="",""
+    for msge in messages[::1]:
+        if msge.author.id in users.keys():
+          users[msge.author.id]+=1
+        else:
+          users[msge.author.id]=1
+    b = sorted(users.items(), key=lambda x: x[1], reverse=True)
+    try:
+      for k in b:
+        user = await bot.fetch_user(int(k[0]))
+        user_string+=f"{k[1]} | {user.mention} | {user.name}#{user.discriminator}\n"
+    except NotFound:
+      pass
+    await mess.edit(embed=transcriptembed.add_field(name="**Direct Transcript**", value=f"[Direct Transcript](https://tickettool.xyz/direct?url={attachment.url})", inline=True))
+    await mess.edit(embed=transcriptembed.add_field(name="**Users in transcript**", value=f"{user_string}", inline=True))
+    loading_embed1 = discord.Embed(title="Ticket Saved", description=f"All ticket information has been saved to **<#AUTOCRYPTO_LOGS_ID>**.",color = MAINCOLOR)
+    await interaction.edit_original_message(content=f"{interaction.user.mention}", embed=loading_embed1)
 
 @bot.command()
 async def remove(ctx, user : discord.Member):  
   rolereq = ctx.guild.get_role(MM_ROLE_ID)
   ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
   if rolereq in ctx.author.roles or ctx.author.id==358594990982561792:
-    
-    db = mysql.connector.connect(
-      host="remotemysql.com",
-      user="uDNB0NiyRu",
-      passwd="AAxYedadAw",
-      database="uDNB0NiyRu")
-    mycursor = db.cursor()
-    mycursor.execute(f"SELECT * FROM autocrypto_tickets_info WHERE channel_id = {ctx.channel.id}")
-    data = mycursor.fetchall()
-    if len(data) == 0:
-      await ctx.reply("This channel isn't a ticket.")
+    currentticket = await ctx.channel.history(limit=1, oldest_first=True).flatten()
+    try:
+      dbchannel_id = int(currentticket[0].content.split("||")[1])
+    except Exception:
+      return await ctx.reply("This channel isn't a ticket.")
+    dbchannel = bot.get_channel(dbchannel_id)
+    ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+    ticketdata = ast.literal_eval(ticketdata_msg.content)
+    if len(ticketdata) == 0:
+      return await ctx.reply("This channel isn't a ticket.")
+  
+    if rolereq in user.roles:
+      await ctx.reply("BRO! Why are you trying to remove your crew mate 😭")
       return
-    else:
-    
-      if rolereq in user.roles:
-        await ctx.reply("BRO! Why are you trying to remove your crew mate 😭")
-        return
-      else:
-        
-        #async with ctx.channel.typing():
-        
-          Toggle = True
-          mycursor.execute(f"SELECT ticket_status FROM autocrypto_tickets_info WHERE channel_id = '{ctx.channel.id}'")
-          for x in mycursor:
-            if str(x[0]) == "Closed" or str(x[0]) == "Delete":
-              await ctx.reply("*You can't use this while the ticket is closed!*")
-              Toggle = False
-              mycursor.close()
-              return
-          if Toggle == True:
-            await ctx.message.channel.set_permissions(user, send_messages=False, view_channel=False, attach_files=False, embed_links=False, read_message_history=False)
-            await ctx.reply(embed=discord.Embed(title="Member Removed", description=f'**{user.mention}** has been removed from the ticket!', color=MAINCOLOR))
-            logembed = discord.Embed(color=MAINCOLOR)
-            logembed.add_field(name=f"User Responsible", value=f"{ctx.author.mention} | {ctx.author.id} has removed {user.mention} | {user.id}", inline=False)
-            logembed.add_field(name=f"Channel", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=False)
-            if ctx.channel.category != None:
-              logembed.add_field(name=f"Category", value=f"{ctx.channel.category.name} | {ctx.channel.category.id}", inline=False)
-            logembed.set_author(name=f"Action: Member Removed", icon_url=f"{ctx.author.display_avatar.url}")
-            await ticketlogs.send(embed=logembed)
-            mycursor.execute(f"DELETE FROM added_info WHERE userID = '{user.id}'")
-            db.commit()
-            mycursor.close()
-            db.close()
+ 
+    if str(ticketdata['ticket_status']) == "Closed" or str(ticketdata['ticket_status']) == "Delete":
+      await ctx.reply("*You can't use this while the ticket is closed!*")
+      return
+
+    await ctx.message.channel.set_permissions(user, send_messages=False, view_channel=False, attach_files=False, embed_links=False, read_message_history=False)
+    await ctx.reply(embed=discord.Embed(title="Member Removed", description=f'**{user.mention}** has been removed from the ticket!', color=MAINCOLOR))
+    logembed = discord.Embed(color=MAINCOLOR)
+    logembed.add_field(name=f"User Responsible", value=f"{ctx.author.mention} | {ctx.author.id} has removed {user.mention} | {user.id}", inline=False)
+    logembed.add_field(name=f"Channel", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=False)
+    if ctx.channel.category != None:
+      logembed.add_field(name=f"Category", value=f"{ctx.channel.category.name} | {ctx.channel.category.id}", inline=False)
+    logembed.set_author(name=f"Action: Member Removed", icon_url=f"{ctx.author.display_avatar.url}")
+    await ticketlogs.send(embed=logembed)
+
+    currentticket = await ctx.channel.history(limit=1, oldest_first=True).flatten()
+    dbchannel_id = int(currentticket[0].content.split("||")[1])
+    dbchannel = bot.get_channel(dbchannel_id)
+    ticketdata_msg2 = await dbchannel.history(limit=2, oldest_first=True).flatten();ticketdata_msg2=ticketdata_msg2[1]
+    ticketdata2 = ast.literal_eval(ticketdata_msg2.content)
+    if {"user_id": user.id, "channel_id": ctx.channel.id} in ticketdata2:
+      ticketdata2.remove({"user_id": user.id, "channel_id": ctx.channel.id})
+      await ticketdata_msg2.edit(ticketdata2)
 
 @bot.command(aliases=['del'])
 @commands.cooldown(1, 10, commands.BucketType.channel)
@@ -513,74 +452,61 @@ async def delete(ctx):
   rolereq = ctx.guild.get_role(MM_ROLE_ID)
   ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
   transcripts = bot.get_channel(AUTOCRYPTO_LOGS_ID)
-  Status = True
   if (rolereq in ctx.author.roles) or ctx.author.id==358594990982561792:
-    #async with ctx.channel.typing():
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="uDNB0NiyRu",
-        passwd="AAxYedadAw",
-        database="uDNB0NiyRu")
-      mycursor = db.cursor()
-      mycursor.execute(f"SELECT * FROM autocrypto_tickets_info WHERE channel_id = {ctx.channel.id}")
-      data = mycursor.fetchall()
-      if len(data) == 0:
-        await ctx.reply("This channel isn't a ticket.")
-        return
-      else:
-        mycursor.execute(f"SELECT ticket_status FROM autocrypto_tickets_info WHERE channel_id = '{ctx.channel.id}'")
-        for x in mycursor: # check if ticket is opened or closed
-          if str(x[0]) == "Delete":
-            await ctx.reply("*The ticket is already being deleted!*")
-            Status = False
-            mycursor.close()
-            return
-        if Status == True:
-          await ctx.channel.send(embed=discord.Embed(description=f'Deleting this ticket..', color=MAINCOLOR))
-          mycursor.execute(f"UPDATE autocrypto_tickets_info SET ticket_status = 'Delete' WHERE channel_id = '{ctx.channel.id}'")
-          mycursor.execute(f"DELETE FROM added_info WHERE channelID = '{ctx.channel.id}'")
-          mycursor.execute(f"DELETE FROM closed_msgs WHERE channelID = '{ctx.channel.id}'")
-          db.commit()
-          await ctx.message.delete()
-          logembed = discord.Embed(color=MAINCOLOR)
-          logembed.add_field(name=f"User Responsible", value=f"{ctx.author.mention} | {ctx.author.id}", inline=False)
-          logembed.add_field(name=f"Channel", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=False)
-          if ctx.channel.category != None:
-            logembed.add_field(name=f"Category", value=f"{ctx.channel.category.name} | {ctx.channel.category.id}", inline=False)
-          logembed.set_author(name=f"Action: Ticket Deleted", icon_url=f"{ctx.author.display_avatar.url}")
-          await ticketlogs.send(embed=logembed)
-          transcript = await chat_exporter.export(channel=ctx.channel, limit=None, tz_info="America/Los_Angeles")
-          if transcript is None:
-            return
-          transcript_file = discord.File(io.BytesIO(transcript.encode()), filename=f"transcript-{ctx.channel.name}.html")
-          transcriptembed = discord.Embed(color=0x1EC45C)
-          transcriptembed.add_field(name="Author", value=f"{ctx.author.mention} | {ctx.author.id}", inline=True)
-          transcriptembed.add_field(name="Ticket", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=True)
-          if ctx.channel.category != None:
-            transcriptembed.add_field(name="Category", value=f"{ctx.channel.category.name} | {ctx.channel.category.id}", inline=True)
-          mess = await transcripts.send(embed=transcriptembed, file=transcript_file)
-          attachment = mess.attachments[0]
-          messages = await ctx.channel.history(limit=None).flatten()
-          for msg in messages[::1]:
-              if msg.author.id in users.keys():
-                users[msg.author.id]+=1
-              else:
-                users[msg.author.id]=1
-          user_string,user_transcript_string="",""
-          b = sorted(users.items(), key=lambda x: x[1], reverse=True)
-          try:
-            for k in b:
-              user = await bot.fetch_user(int(k[0]))
-              user_string+=f"{k[1]} | {user.mention} | {user.name}#{user.discriminator}\n"
-          except NotFound:
-            pass
-          await mess.edit(embed=transcriptembed.add_field(name="**Direct Transcript**", value=f"[Direct Transcript](https://tickettool.xyz/direct?url={attachment.url})", inline=True))
-          await mess.edit(embed=transcriptembed.add_field(name="**Users in transcript**", value=f"{user_string}", inline=True))
-          await ctx.channel.delete()
-          mycursor.execute(f"DELETE FROM autocrypto_tickets_info WHERE channel_id = '{ctx.channel.id}'")
-          db.commit()
-          mycursor.close()
-          db.close()
+    currentticket = await ctx.channel.history(limit=1, oldest_first=True).flatten()
+    try:
+      dbchannel_id = int(currentticket[0].content.split("||")[1])
+    except Exception:
+      return await ctx.reply("This channel isn't a ticket.")
+    dbchannel = bot.get_channel(dbchannel_id)
+    ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+    ticketdata = ast.literal_eval(ticketdata_msg.content)
+    if len(ticketdata) == 0:
+      return await ctx.reply("This channel isn't a ticket.")
+
+    if str(ticketdata['ticket_status']) == "Delete":
+      await ctx.reply("*The ticket is already being deleted!*")
+      return
+
+    await ctx.channel.send(embed=discord.Embed(description=f'Deleting this ticket..', color=MAINCOLOR))
+    ticketdata['ticket_status'] = "Delete"
+    await ticketdata_msg.edit(ticketdata)
+    await ctx.message.delete()
+    logembed = discord.Embed(color=MAINCOLOR)
+    logembed.add_field(name=f"User Responsible", value=f"{ctx.author.mention} | {ctx.author.id}", inline=False)
+    logembed.add_field(name=f"Channel", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=False)
+    if ctx.channel.category != None:
+      logembed.add_field(name=f"Category", value=f"{ctx.channel.category.name} | {ctx.channel.category.id}", inline=False)
+    logembed.set_author(name=f"Action: Ticket Deleted", icon_url=f"{ctx.author.display_avatar.url}")
+    await ticketlogs.send(embed=logembed)
+    transcript = await chat_exporter.export(channel=ctx.channel, limit=None, tz_info="America/Los_Angeles")
+    if transcript is None:
+      return
+    transcript_file = discord.File(io.BytesIO(transcript.encode()), filename=f"transcript-{ctx.channel.name}.html")
+    transcriptembed = discord.Embed(color=0x1EC45C)
+    transcriptembed.add_field(name="Author", value=f"{ctx.author.mention} | {ctx.author.id}", inline=True)
+    transcriptembed.add_field(name="Ticket", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=True)
+    if ctx.channel.category != None:
+      transcriptembed.add_field(name="Category", value=f"{ctx.channel.category.name} | {ctx.channel.category.id}", inline=True)
+    mess = await transcripts.send(embed=transcriptembed, file=transcript_file)
+    attachment = mess.attachments[0]
+    messages = await ctx.channel.history(limit=None).flatten()
+    for msg in messages[::1]:
+        if msg.author.id in users.keys():
+          users[msg.author.id]+=1
+        else:
+          users[msg.author.id]=1
+    user_string,user_transcript_string="",""
+    b = sorted(users.items(), key=lambda x: x[1], reverse=True)
+    try:
+      for k in b:
+        user = await bot.fetch_user(int(k[0]))
+        user_string+=f"{k[1]} | {user.mention} | {user.name}#{user.discriminator}\n"
+    except NotFound:
+      pass
+    await mess.edit(embed=transcriptembed.add_field(name="**Direct Transcript**", value=f"[Direct Transcript](https://tickettool.xyz/direct?url={attachment.url})", inline=True))
+    await mess.edit(embed=transcriptembed.add_field(name="**Users in transcript**", value=f"{user_string}", inline=True))
+    await ctx.channel.delete()
 
 @bot.command()
 @commands.has_role(MM_ROLE_ID)
@@ -610,49 +536,40 @@ async def rename(ctx, *args):
 async def close(ctx):
   rolereq = ctx.guild.get_role(MM_ROLE_ID)
   if rolereq in ctx.author.roles or ctx.author.id==358594990982561792:
-    #async with ctx.channel.typing():
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="uDNB0NiyRu",
-        passwd="AAxYedadAw",
-        database="uDNB0NiyRu")
-      mycursor = db.cursor()
-      mycursor.execute(f"SELECT * FROM autocrypto_tickets_info WHERE channel_id = {ctx.channel.id}")
-      data = mycursor.fetchall()
-      if len(data) == 0:
-        await ctx.reply("This channel isn't a ticket.")
-        return
-      else:
-        mycursor.execute(f"SELECT ticket_status FROM autocrypto_tickets_info WHERE channel_id = '{ctx.channel.id}'")
-        Toggle = True
-        for i in mycursor:
-          if str(i[0]) == "Closed" or str(i[0]) == "Delete":
-            await ctx.reply("*Ticket is already closed!*")
-            Toggle = False
-            mycursor.close()
-            return
-        if Toggle == True:
-          await ctx.message.delete()
-          ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
-          for i in ctx.channel.overwrites:
-            if type(i) == discord.member.Member:
-              if rolereq not in i.roles:
-                if rolereq in ctx.author.roles:
-                  await ctx.channel.set_permissions(i, overwrite=None)
-          logembed = discord.Embed(color=MAINCOLOR)
-          logembed.add_field(name=f"User Responsible", value=f"{ctx.author.mention} | {ctx.author.id}", inline=False)
-          logembed.add_field(name=f"Channel", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=False)
-          if ctx.channel.category != None:
-            logembed.add_field(name=f"Category", value=f"{ctx.channel.category.name} | {ctx.channel.category.id}", inline=False)
-          logembed.set_author(name=f"Action: Ticket Closed", icon_url=f"{ctx.author.display_avatar.url}")
-          await ticketlogs.send(embed=logembed)
-          view = Closed_Msgs()
-          msg1 = await ctx.send(embed=discord.Embed(title="Ticket Closed", description=f"The ticket has been closed by {ctx.author.mention}.\nReact below to **Reopen, Delete or Save** your ticket.", color=MAINCOLOR), view=view)
-          mycursor.execute(f"UPDATE autocrypto_tickets_info SET ticket_status = 'Closed' WHERE channel_id = '{ctx.channel.id}'")
-          mycursor.execute("INSERT INTO closed_msgs (msgID, channelID) VALUES (%s, %s)", (msg1.id, ctx.channel.id))
-          db.commit()
-          mycursor.close()
-          db.close()
+    currentticket = await ctx.channel.history(limit=1, oldest_first=True).flatten()
+    try:
+      dbchannel_id = int(currentticket[0].content.split("||")[1])
+    except Exception:
+      return await ctx.reply("This channel isn't a ticket.")
+    dbchannel = bot.get_channel(dbchannel_id)
+    ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+    ticketdata = ast.literal_eval(ticketdata_msg.content)
+    if len(ticketdata) == 0:
+      return await ctx.reply("This channel isn't a ticket.")
+
+    if str(ticketdata['ticket_status']) == "Closed" or str(ticketdata['ticket_status']) == "Delete":
+      await ctx.reply("*Ticket is already closed!*")
+      return
+
+    await ctx.message.delete()
+    ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
+    for i in ctx.channel.overwrites:
+      if type(i) == discord.member.Member:
+        if rolereq not in i.roles:
+          if rolereq in ctx.author.roles:
+            await ctx.channel.set_permissions(i, overwrite=None)
+    logembed = discord.Embed(color=MAINCOLOR)
+    logembed.add_field(name=f"User Responsible", value=f"{ctx.author.mention} | {ctx.author.id}", inline=False)
+    logembed.add_field(name=f"Channel", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=False)
+    if ctx.channel.category != None:
+      logembed.add_field(name=f"Category", value=f"{ctx.channel.category.name} | {ctx.channel.category.id}", inline=False)
+    logembed.set_author(name=f"Action: Ticket Closed", icon_url=f"{ctx.author.display_avatar.url}")
+    await ticketlogs.send(embed=logembed)
+    view = Closed_Msgs()
+    msg1 = await ctx.send(embed=discord.Embed(title="Ticket Closed", description=f"The ticket has been closed by {ctx.author.mention}.\nReact below to **Reopen, Delete or Save** your ticket.", color=MAINCOLOR), view=view)
+    ticketdata['ticket_status'] = "Closed"
+    ticketdata['closed_msg_id'] = msg1.id
+    await ticketdata_msg.edit(ticketdata)
 
 @bot.command()
 @commands.cooldown(1, 10, commands.BucketType.channel)
@@ -661,63 +578,52 @@ async def reopen(ctx):
   guild = bot.get_guild(GUILD_ID)
   ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
   if rolereq in ctx.author.roles or ctx.author.id==358594990982561792:
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="uDNB0NiyRu",
-        passwd="AAxYedadAw",
-        database="uDNB0NiyRu")
-      mycursor = db.cursor()
-      mycursor.execute(f"SELECT * FROM autocrypto_tickets_info WHERE channel_id = {ctx.channel.id}")
-      data = mycursor.fetchall()
-      PREFIX = get_prefix()
-      if len(data) == 0:
-        await ctx.reply("This channel isn't a ticket.")
-        return
-      else:
-      
-          Toggle = True
-                
-          mycursor.execute(f"SELECT ticket_status FROM autocrypto_tickets_info WHERE channel_id = '{ctx.channel.id}'")
-          for x in mycursor:
-            if str(x[0]) == "Open":
-              await ctx.reply("*Ticket is not closed!*")
-              Toggle = False
-              mycursor.close()
-              return
-          if Toggle == True:
-            #async with ctx.channel.typing():
-              mycursor.execute(f"SELECT msgID FROM closed_msgs WHERE channelID = '{ctx.channel.id}'")
-              try:
-                for i in mycursor:
-                  closed_msg = await ctx.channel.fetch_message(int(i[0]))
-                await closed_msg.delete()
-              except NotFound:
-                pass
-              mycursor.execute(f"SELECT userID FROM added_info WHERE channelID = '{ctx.channel.id}'")
-              for y in mycursor:
-                users = guild.get_member(int(y[0]))
-                await ctx.channel.set_permissions(users, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
-              embee = discord.Embed(title="Ticket Opened", description="The ticket has been re-opened.", color=MAINCOLOR)
-              await ctx.reply(embed=embee)
-              logembed = discord.Embed(color=MAINCOLOR)
-              logembed.add_field(name=f"User Responsible", value=f"{ctx.author.mention} | {ctx.author.id}", inline=False)
-              logembed.add_field(name=f"Channel", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=False)
-              if ctx.channel.category != None:
-                logembed.add_field(name=f"Category", value=f"{ctx.channel.category.name} | {ctx.channel.category.id}", inline=False)
-              logembed.set_author(name=f"Action: Ticket Reopened", icon_url=f"{ctx.author.display_avatar.url}")
-              await ticketlogs.send(embed=logembed)
-              mycursor.execute(f"UPDATE autocrypto_tickets_info SET ticket_status = 'Open' WHERE channel_id = '{ctx.channel.id}'")
-              mycursor.execute(f"DELETE FROM closed_msgs WHERE channelID = '{ctx.channel.id}'")
-              db.commit()
-              mycursor.close()
-              db.close()
+    currentticket = await ctx.channel.history(limit=1, oldest_first=True).flatten()
+    try:
+      dbchannel_id = int(currentticket[0].content.split("||")[1])
+    except Exception:
+      return await ctx.reply("This channel isn't a ticket.")
+    dbchannel = bot.get_channel(dbchannel_id)
+    ticketdata_msg = await dbchannel.history(limit=2, oldest_first=True).flatten()
+    ticketdata_msg1=ticketdata_msg[0]
+    ticketdata_msg2=ticketdata_msg[1]
+
+    ticketdata = ast.literal_eval(ticketdata_msg1.content)
+    ticketdata2 = ast.literal_eval(ticketdata_msg2.content)
+
+    if len(ticketdata) == 0:
+      return await ctx.reply("This channel isn't a ticket.")
+                      
+    if str(ticketdata['ticket_status']) == "Open":
+      await ctx.reply("*Ticket is not closed!*")
+      return
+    try:
+      closed_msg = await ctx.channel.fetch_message(int(ticketdata['closed_msg_id']))
+      await closed_msg.delete()
+    except NotFound:
+      pass
+    for added_data in ticketdata2:
+      users = guild.get_member(int(added_data['user_id']))
+      await ctx.channel.set_permissions(users, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
+    embee = discord.Embed(title="Ticket Opened", description="The ticket has been re-opened.", color=MAINCOLOR)
+    await ctx.reply(embed=embee)
+    logembed = discord.Embed(color=MAINCOLOR)
+    logembed.add_field(name=f"User Responsible", value=f"{ctx.author.mention} | {ctx.author.id}", inline=False)
+    logembed.add_field(name=f"Channel", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=False)
+    if ctx.channel.category != None:
+      logembed.add_field(name=f"Category", value=f"{ctx.channel.category.name} | {ctx.channel.category.id}", inline=False)
+    logembed.set_author(name=f"Action: Ticket Reopened", icon_url=f"{ctx.author.display_avatar.url}")
+    await ticketlogs.send(embed=logembed)
+    ticketdata['ticket_status'] = "Open"
+    ticketdata['closed_msg_id'] = 0
+    await ticketdata_msg1.edit(ticketdata)
 
 @bot.command()
 async def help(ctx):
-  PREFIX = get_prefix()
+  PREFIX = BOT_PREFIX
   embed = discord.Embed(color=MAINCOLOR)
   embed.add_field(name=f"<:account:863985851079983105>・__Middleman__", value=f"───────────〃\n> ៹ 〃[`add` \"@user/userID\"] **-** Add user to a ticket.\n> ៹ 〃[`remove` \"@user/userID\"] **-** Remove user from a ticket.\n> ៹ 〃[`rename` \"name\"] **-** Rename a ticket.\n> ៹ 〃[`delete`/`del`] **-** Delete a ticket.\n> ៹ 〃[`mmban` \"@user/userID\" \"reason\"] **-** Blacklist a user.\n> ៹ 〃[`unmmban` \"@user/userID\"] **-** Unblacklist a user.\n> ៹ 〃[`close`] **-** Close a ticket.\n> ៹ 〃[`reopen`] **-** Reopen a closed ticket.\n> ៹ 〃[`transcript`] **-** Saves ticket's transcript.", inline=False)
-  embed.add_field(name=f"🛠️・__Moderation__", value=f"───────────〃\n> ៹ 〃[`ban/unban` \"@user/userID\"] **-** Bans/Unbans a user.\n> ៹ 〃[`snipe`/`snipe all`] **-** Snipes deleted message/s.\n> ៹ 〃[`purge` \"number\"] **-** Purges messages.\n> ៹ 〃[`role` \"@user/userID\"] **-** Adds/Revokes a role from/to a user.\n> ៹ 〃[`whois` \"@user/userID\"] **-** Sends info about a user.\n> ៹ 〃[`mute` \"@user/userID\" \"duration\" \"reason\"] **-** Mutes a user.\n> ៹ 〃[`unmute`] **-** Unmutes a user.", inline=False)
+  embed.add_field(name=f"🛠️・__Moderation__", value=f"───────────〃\n> ៹ 〃[`ban/unban` \"@user/userID\"] **-** Bans/Unbans a user.\n> ៹ 〃[`purge` \"number\"] **-** Purges messages.\n> ៹ 〃[`role` \"@user/userID\"] **-** Adds/Revokes a role from/to a user.\n> ៹ 〃[`whois` \"@user/userID\"] **-** Sends info about a user.\n> ៹ 〃[`mute` \"@user/userID\" \"duration\" \"reason\"] **-** Mutes a user.\n> ៹ 〃[`unmute`] **-** Unmutes a user.", inline=False)
   embed.add_field(name=f"👑・__Chase's__", value=f"───────────〃\n> ៹ 〃[`mm`] **-** Sends an embed with the discord mm's account info.\n> ៹ 〃[`pl`] **-** Sends an embed with the roblox mm's account info.\n> ៹ 〃[`prefix \"newPrefix\"`] **-** Changes the bot's prefix.\n> ៹ 〃[`i` \"username\"] **-** Get user info (Roblox).\n> ៹ 〃[`s` \"username\"] **-** Send friend request (Roblox).\n> ៹ 〃[`delf`] **-** Unfriend all users (Roblox).\n> ៹ 〃[`get_f`] **-** Get recent friend requests (Roblox).\n> ៹ 〃[`acc_f` \"username\"] **-** Accept friend request (Roblox).\n> ៹ 〃[`dec_f` \"username\"] **-** Decline friend request (Roblox).\n> ៹ 〃[`dec_all`] **-** Decline all friend requests (Roblox).\n> ៹ 〃[`dec_trades`] **-** Decline all inbound trades (Roblox).\n> ៹ 〃[`trades`] **-** Get inbound trades (Roblox).", inline=False)
   embed.set_footer(text=f"Prefix: {PREFIX}")
   await ctx.reply(embed=embed)
@@ -728,13 +634,123 @@ async def on_message(message):
      return
     else:
       if message.content == "<@!788238889415606322>":
-        PREFIX = get_prefix()
+        PREFIX = BOT_PREFIX
         await message.reply(f"The prefix is `{PREFIX}`\n> For more info, use `{PREFIX}help`")
+
+@bot.listen()
+async def on_message(message):
+  try:
+    role = message.guild.get_role(BLACKLIST_ROLE_ID)
+    rolereq = message.guild.get_role(MM_ROLE_ID)
+    ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
+    if (rolereq in message.author.roles):
+      PREFIX = BOT_PREFIX
+      if (message.content.lower().startswith(f"{PREFIX}add")):
+        currentticket = await message.channel.history(limit=1, oldest_first=True).flatten()
+        try:
+          dbchannel_id = int(currentticket[0].content.split("||")[1])
+        except Exception:
+          return await message.reply("This channel isn't a ticket.")
+        dbchannel = bot.get_channel(dbchannel_id)
+        ticketdata_msg = await dbchannel.history(limit=2, oldest_first=True).flatten()
+        ticketdata_msg1=ticketdata_msg[0]
+        ticketdata_msg2=ticketdata_msg[1]
+
+        ticketdata = ast.literal_eval(ticketdata_msg1.content)
+        ticketdata2 = ast.literal_eval(ticketdata_msg2.content)
+
+        UserAdded = True
+        try:
+          if str(ticketdata['ticket_status']) == "Closed" or str(ticketdata['ticket_status']) == "Delete":
+            await message.reply("*You can't use this while the ticket is closed!*")
+            return
+
+          if "#" in message.content:
+            content = message.content[5:]
+            hashtag = content.split("#")
+            user1 = discord.utils.get(message.guild.members, name=f"{hashtag[0]}", discriminator=f"{hashtag[1]}")
+            if role in user1.roles: # if user is blacklisted
+              await message.reply(f"Whoops! {user1.mention} is blacklisted from using this server's mm service :(")
+              return
+            else: # else if the user isn't blacklisted
+              for i in ticketdata2: # if user is already added
+                if int(i['user_id']) == user1.id:
+                  await message.reply(f"*{user1.mention} is already added to the ticket!*")
+                  UserAdded = False
+                  return
+              if UserAdded == True: # if user isn't added
+                await message.channel.set_permissions(user1, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
+                await message.reply(f"{user1.mention}", embed=discord.Embed(title="Member Added", description=f'**{user1.mention}** has been added to the ticket!', color=MAINCOLOR))
+                logembed = discord.Embed(color=MAINCOLOR)
+                logembed.add_field(name=f"User Responsible", value=f"{message.author.mention} | {message.author.id} has added {user1.mention} | {user1.id}", inline=False)
+                logembed.add_field(name=f"Channel", value=f"{message.channel.name} | {message.channel.id}", inline=False)
+                if message.channel.category != None:
+                  logembed.add_field(name=f"Category", value=f"{message.channel.category.name} | {message.channel.category.id}", inline=False)
+                logembed.set_author(name=f"Action: Member Added", icon_url=f"{message.author.display_avatar.url}")
+                await ticketlogs.send(embed=logembed)
+                ticketdata2.append({"user_id": user1.id, "channel_id": message.channel.id})
+                await ticketdata_msg2.edit(ticketdata2)
+          elif message.mentions:
+            for user2 in message.mentions:
+              if role in user2.roles:
+                await message.reply(f"Whoops! {user2.mention} is blacklisted from using this server's mm service :(")
+                return
+              else:
+                Toggle = True
+                for i in ticketdata2:
+                  if int(i['user_id']) == user2.id:
+                    await message.reply(f"*{user2.mention} is already to the ticket!*")
+                    Toggle = False
+                    return
+                if Toggle == True:
+                  await message.channel.set_permissions(user2, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
+                  await message.reply(f"{user2.mention}", embed=discord.Embed(title="Member Added", description=f'**{user2.mention}** has been added to the ticket!', color=MAINCOLOR))
+                  logembed = discord.Embed(color=MAINCOLOR)
+                  logembed.add_field(name=f"User Responsible", value=f"{message.author.mention} | {message.author.id} has added {user2.mention} | {user2.id}", inline=False)
+                  logembed.add_field(name=f"Channel", value=f"{message.channel.name} | {message.channel.id}", inline=False)
+                  if message.channel.category != None:
+                    logembed.add_field(name=f"Category", value=f"{message.channel.category.name} | {message.channel.category.id}", inline=False)
+                  logembed.set_author(name=f"Action: Member Added", icon_url=f"{message.author.display_avatar.url}")
+                  await ticketlogs.send(embed=logembed)
+                  ticketdata2.append({"user_id": user2.id, "channel_id": message.channel.id})
+                  await ticketdata_msg2.edit(ticketdata2)
+          else:
+            guild = bot.get_guild(713213895073857548)
+            getuser = message.content[5:]
+            user3 = guild.get_member(int(getuser))
+            if role in user3.roles:
+              await message.reply(f"Whoops! {user3.mention} is blacklisted from using this server's mm service :(")
+              return
+            else:
+              Toggle = True
+              for i in ticketdata2:
+                if int(i['user_id']) == user3.id:
+                  await message.reply(f"*{user3.mention} is already to the ticket!*")
+                  Toggle = False
+                  return
+              if Toggle == True:
+                await message.channel.set_permissions(user3, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
+                await message.reply(f"{user3.mention}", embed=discord.Embed(title="Member Added", description=f'**{user3.mention}** has been added to the ticket!', color=MAINCOLOR))
+                logembed = discord.Embed(color=MAINCOLOR)
+                logembed.add_field(name=f"User Responsible", value=f"{message.author.mention} | {message.author.id} has added {user3.mention} | {user3.id}", inline=False)
+                logembed.add_field(name=f"Channel", value=f"{message.channel.name} | {message.channel.id}", inline=False)
+                if message.channel.category != None:
+                  logembed.add_field(name=f"Category", value=f"{message.channel.category.name} | {message.channel.category.id}", inline=False)
+                logembed.set_author(name=f"Action: Member Added", icon_url=f"{message.author.display_avatar.url}")
+                await ticketlogs.send(embed=logembed)
+                ticketdata2.append({"user_id": user3.id, "channel_id": message.channel.id})
+                await ticketdata_msg2.edit(ticketdata2)
+        except ValueError:
+          await message.reply(embed=discord.Embed(description="***User wasn't found, double check the username/ID and make sure the user is in this server!***", color=0xed4245))
+        except AttributeError:
+          await message.reply(embed=discord.Embed(description="***User wasn't found, double check the username/ID and make sure the user is in this server!***", color=0xed4245))
+  except AttributeError:
+    pass
 
 @remove.error
 async def remove_error(ctx, error):
   if isinstance(error, commands.MissingRequiredArgument):
-    PREFIX = get_prefix()
+    PREFIX = BOT_PREFIX
     await ctx.reply(embed=discord.Embed(description=f"***User is missing!***\n***Usage: `{PREFIX}remove @user` or `{PREFIX}remove userID`***", color=0xed4245))
   if isinstance(error, commands.MemberNotFound):
     await ctx.reply(embed=discord.Embed(description=f"***User wasn't found!***", color=0xed4245))
@@ -754,66 +770,55 @@ async def on_message(message):
     category_id = AUTOCRYPTO_CATEGORY_ID
     if (message.channel.category.id) == category_id:
       global session
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="uDNB0NiyRu",
-        passwd="AAxYedadAw",
-        database="uDNB0NiyRu")
-      mycursor = db.cursor()
+      currentticket = await message.channel.history(limit=1, oldest_first=True).flatten()
+      dbchannel_id = int(currentticket[0].content.split("||")[1])
+      dbchannel = bot.get_channel(dbchannel_id)
+      ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+      ticketdata = ast.literal_eval(ticketdata_msg.content)
       
       ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
       guild = bot.get_guild(GUILD_ID)
 
-      mycursor.execute(f"SELECT trader_added, owner_trader_type, channel_owner_id, trade_amount_usd FROM autocrypto_tickets_info WHERE channel_id = '{message.channel.id}'")
-      data = mycursor.fetchall()
-      if (data[0][0] == "No"): # Who's your trader? if trader wasn't added
-        if (data[0][1] == "buyer") or (data[0][1] == "seller"): # if owner type is buyer or seller
-          if message.author.id == data[0][2]: # if author is ticket owner
-            if data[0][3] == 0: # if amount not stated
+      if (ticketdata['trader_added'] == "No"): # Who's your trader? if trader wasn't added
+        if (ticketdata['owner_trader_type'] == "buyer") or (ticketdata['owner_trader_type'] == "seller"): # if owner type is buyer or seller
+          if message.author.id == int(ticketdata['channel_owner_id']): # if author is ticket owner
+            if float(ticketdata['trade_amount_usd']) == 0: # if amount not stated
                 amount = message.content
 
                 try:
                   pointsToAdd = float(amount)
                 except Exception:
-                  mycursor.close();db.close()
                   return await message.reply("The amount must be a number!")
 
                 if pointsToAdd == 0:
-                  mycursor.close();db.close()
                   return await message.reply("The amount cannot be 0!")
 
                 if pointsToAdd < 0:
-                  mycursor.close();db.close()
                   return await message.reply("The amount cannot be negative!")
 
+                if pointsToAdd < 2:
+                  return await message.reply("The amount cannot be less than $2!")
+
                 usd = float(amount)
-                usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
                 fee = usd * 0.005
                 if fee < 1.00:
                   fee = 1.00
                 else:
                   fee = fee
-                feeInBtc = fee / usdprice
-                usdInBtc = usd / usdprice
-                totalusd = usd + fee
 
-                mycursor.execute(f"UPDATE autocrypto_tickets_info SET trade_amount_usd=%s, fee_amount_usd=%s WHERE channel_id=%s", (float(amount), float(fee), message.channel.id))
-                db.commit()
-
-                #await message.reply(f"The deal in USD: `${usd}`\nService fee: `${fee}`\nTotal payment in USD: `${totalusd}`")
+                ticketdata['trade_amount_usd'] = float(amount)
+                ticketdata['fee_amount_usd'] = float(fee)
+                await ticketdata_msg.edit(ticketdata)
 
                 embed = discord.Embed(title="Who's your trader?", description="Type either their Discord ID, full username or mention.\n\n`do not include @ if you aren't able to ping your trader.`", color=MAINCOLOR)
                 await message.channel.send(embed=embed)
 
-                mycursor.close(); db.close()
                 return
 
-      mycursor.execute(f"SELECT trader_added, owner_trader_type, channel_owner_id, trade_amount_usd FROM autocrypto_tickets_info WHERE channel_id = '{message.channel.id}'")
-      data = mycursor.fetchall()
-      if (data[0][0] == "No"): # Who's your trader? if trader wasn't added
-        if (data[0][1] == "buyer") or (data[0][1] == "seller"): # if owner type is buyer or seller
-          if message.author.id == data[0][2]: # if author is ticket owner
-            if data[0][3] != 0: # if amount stated
+      if (ticketdata['trader_added'] == "No"): # Who's your trader? if trader wasn't added
+        if (ticketdata['owner_trader_type'] == "buyer") or (ticketdata['owner_trader_type'] == "seller"): # if owner type is buyer or seller
+          if message.author.id == int(ticketdata['channel_owner_id']): # if author is ticket owner
+            if float(ticketdata['trade_amount_usd']) != 0: # if amount stated
               blrole = message.guild.get_role(BLACKLIST_ROLE_ID)
               try:
                 if message.mentions:
@@ -837,20 +842,25 @@ async def on_message(message):
                   return await message.reply("You can't add a bot <a:oklol:858377249949220904>")
                 
                 if blrole in user.roles:
-                  mycursor.close()
-                  db.close()
                   return await message.reply(f"Whoops! {user.mention} is blacklisted from using this server's mm service :(")
                 
                 await message.channel.set_permissions(user, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
                 await message.reply(f"{user.mention}", embed=discord.Embed(description=f'***{user.mention} was added to the ticket {message.channel.mention}***', color=SUCCCOLOR))
                 
-                mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (user.id, message.channel.id))
-                if data[0][1] == "seller":
-                  mycursor.execute(f"UPDATE autocrypto_tickets_info SET trader_added=%s, trader_receiver_id=%s WHERE channel_id=%s", ("Yes", user.id, message.channel.id))
-                elif data[0][1] == "buyer":
-                  mycursor.execute(f"UPDATE autocrypto_tickets_info SET trader_added=%s, trader_seller_id=%s WHERE channel_id=%s", ("Yes", user.id, message.channel.id))
-                db.commit()
-                              
+                ticketdata_msg2 = await dbchannel.history(limit=2, oldest_first=True).flatten();ticketdata_msg2=ticketdata_msg2[1]
+                ticketdata2 = ast.literal_eval(ticketdata_msg2.content)
+
+                ticketdata2.append({"user_id": user.id, "channel_id": message.channel.id})
+                await ticketdata_msg2.edit(ticketdata2)
+
+                if ticketdata['owner_trader_type'] == "seller":
+                  ticketdata['trader_added'] = "Yes"
+                  ticketdata['trader_receiver_id'] = user.id
+                elif ticketdata['owner_trader_type'] == "buyer":
+                  ticketdata['trader_added'] = "Yes"
+                  ticketdata['trader_seller_id'] = user.id
+                await ticketdata_msg.edit(ticketdata)
+
                 logembed = discord.Embed(description=f"Author: **{message.author.name}#{message.author.discriminator}** | ID: {message.author.id}\nTicket: **{message.channel.name}** | ID: {message.channel.id}\nAction: **Added {user.name}#{user.discriminator} | ID: {user.id}**", color=0x66BB6A)
                 logembed.set_author(name=f"{message.author.name}#{message.author.discriminator}", icon_url=f"{message.author.display_avatar.url}")
                 await ticketlogs.send(embed=logembed)
@@ -878,12 +888,9 @@ async def on_message(message):
                   embed = discord.Embed(title=msga, color=MAINCOLOR)
                   await message.channel.send(ment_msg, embed=embed, view=Use_MMPass())
                   return
-
-                mycursor.execute(f"SELECT trader_seller_id, trade_amount_usd FROM autocrypto_tickets_info WHERE channel_id = '{message.channel.id}'")
-                data = mycursor.fetchall()
                 
-                usd = float(data[0][1])
-                usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
+                usd = float(ticketdata['trade_amount_usd'])
+                usdprice = session.get("https://apirone.com/api/v2/ticker?btc").json().get('usd')
                 fee = usd * 0.005
                 if fee < 1.00:
                   fee = 1.00
@@ -900,21 +907,20 @@ async def on_message(message):
                 btc = getWholeFloat(btc)
 
                 embed2 = discord.Embed(title="Payment Information",description=f"The total USD includes a 0.5% fee of: **${fee}**\nClick the \"Paid\" button once you've sent the payment to the address.", color=MAINCOLOR)
-                embed2.set_thumbnail(url=f"https://chart.googleapis.com/chart?chs=500x500&cht=qr&chl={address}")
+                #embed2.set_thumbnail(url=f"https://chart.googleapis.com/chart?chs=500x500&cht=qr&chl={address}")
                 embed2.add_field(name="USD", value=f"${totalusd}", inline=True)
                 embed2.add_field(name="BTC", value=f"{btc}", inline=True)
                 embed2.add_field(name="Payment Address", value=f"{address}", inline=False)
                 embed2.set_footer(text=f"1 BTC = ${usdprice}")
 
-                await message.channel.send(f"<@{data[0][0]}> Send the payment along with the fee to the following address.", embed=embed2, view=PasteAddress())
+                await message.channel.send(f"<@{ticketdata['trader_seller_id']}> Send the payment along with the fee to the following address.", embed=embed2, view=PasteAddress())
 
-                mycursor.execute(f"UPDATE autocrypto_tickets_info SET trade_stated=%s, hold_address=%s, ticket_status=%s WHERE channel_id=%s", ("Yes", address, "Active", message.channel.id))
-                db.commit()
-                mycursor.close(); db.close()
+                ticketdata['trade_stated'] = "Yes"
+                ticketdata['hold_address'] = address
+                ticketdata['ticket_status'] = "Active"
+                await ticketdata_msg.edit(ticketdata)
                 return
               except ValueError or AttributeError:
-                mycursor.close()
-                db.close()
                 return await message.reply("User wasn't found, double check the username/ID and make sure the user is in this server!")            
 
   #await bot.process_commands(message)
@@ -923,53 +929,48 @@ async def on_message(message):
 async def transcript(ctx):
   users={}
   rolereq = ctx.guild.get_role(MM_ROLE_ID)
-  ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
   transcripts = bot.get_channel(AUTOCRYPTO_LOGS_ID)
   loading_embed = discord.Embed(title="Ticket Saved", description=f"All ticket information has been saved to **<#AUTOCRYPTO_LOGS_ID>**.",color = MAINCOLOR)
   if (rolereq in ctx.author.roles) or ctx.author.id==358594990982561792:
-    #async with ctx.channel.typing():
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="uDNB0NiyRu",
-        passwd="AAxYedadAw",
-        database="uDNB0NiyRu")
-      mycursor = db.cursor()
-      mycursor.execute(f"SELECT * FROM autocrypto_tickets_info WHERE channel_id = {ctx.channel.id}")
-      data = mycursor.fetchall()
-      if len(data) == 0:
-        await ctx.reply("This channel isn't a ticket.")
-        return
-      else:
-      
+    currentticket = await ctx.channel.history(limit=1, oldest_first=True).flatten()
+    try:
+      dbchannel_id = int(currentticket[0].content.split("||")[1])
+    except Exception:
+      return await ctx.reply("This channel isn't a ticket.")
+    dbchannel = bot.get_channel(dbchannel_id)
+    ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+    ticketdata = ast.literal_eval(ticketdata_msg.content)
+    if len(ticketdata) == 0:
+      return await ctx.reply("This channel isn't a ticket.")
         
-          transcript = await chat_exporter.export(channel=ctx.channel, limit=None, tz_info="America/Los_Angeles")
-          if transcript is None:
-            return
-          transcript_file = discord.File(io.BytesIO(transcript.encode()), filename=f"transcript-{ctx.channel.name}.html")
-          transcriptembed = discord.Embed(color=0x1EC45C)
-          transcriptembed.add_field(name="Author", value=f"{ctx.author.mention} | {ctx.author.id}", inline=True)
-          transcriptembed.add_field(name="Ticket", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=True)
-          if ctx.channel.category != None:
-            transcriptembed.add_field(name="Category", value=f"{ctx.channel.category.name} | {ctx.channel.category.id}", inline=True)
-          mess = await transcripts.send(embed=transcriptembed, file=transcript_file)
-          msg = await ctx.reply(embed=loading_embed)
-          attachment = mess.attachments[0]
-          messages = await ctx.channel.history(limit=None).flatten()
-          for msg in messages[::1]:
-              if msg.author.id in users.keys():
-                users[msg.author.id]+=1
-              else:
-                users[msg.author.id]=1
-          user_string,user_transcript_string="",""
-          b = sorted(users.items(), key=lambda x: x[1], reverse=True)
-          try:
-            for k in b:
-              user = await bot.fetch_user(int(k[0]))
-              user_string+=f"{k[1]} | {user.mention} | {user.name}#{user.discriminator}\n"
-          except NotFound:
-            pass
-          await mess.edit(embed=transcriptembed.add_field(name="**Direct Transcript**", value=f"[Direct Transcript](https://tickettool.xyz/direct?url={attachment.url})", inline=True))
-          await mess.edit(embed=transcriptembed.add_field(name="**Users in transcript**", value=f"{user_string}", inline=True))
+    transcript = await chat_exporter.export(channel=ctx.channel, limit=None, tz_info="America/Los_Angeles")
+    if transcript is None:
+      return
+    transcript_file = discord.File(io.BytesIO(transcript.encode()), filename=f"transcript-{ctx.channel.name}.html")
+    transcriptembed = discord.Embed(color=0x1EC45C)
+    transcriptembed.add_field(name="Author", value=f"{ctx.author.mention} | {ctx.author.id}", inline=True)
+    transcriptembed.add_field(name="Ticket", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=True)
+    if ctx.channel.category != None:
+      transcriptembed.add_field(name="Category", value=f"{ctx.channel.category.name} | {ctx.channel.category.id}", inline=True)
+    mess = await transcripts.send(embed=transcriptembed, file=transcript_file)
+    msg = await ctx.reply(embed=loading_embed)
+    attachment = mess.attachments[0]
+    messages = await ctx.channel.history(limit=None).flatten()
+    for msg in messages[::1]:
+        if msg.author.id in users.keys():
+          users[msg.author.id]+=1
+        else:
+          users[msg.author.id]=1
+    user_string,user_transcript_string="",""
+    b = sorted(users.items(), key=lambda x: x[1], reverse=True)
+    try:
+      for k in b:
+        user = await bot.fetch_user(int(k[0]))
+        user_string+=f"{k[1]} | {user.mention} | {user.name}#{user.discriminator}\n"
+    except NotFound:
+      pass
+    await mess.edit(embed=transcriptembed.add_field(name="**Direct Transcript**", value=f"[Direct Transcript](https://tickettool.xyz/direct?url={attachment.url})", inline=True))
+    await mess.edit(embed=transcriptembed.add_field(name="**Users in transcript**", value=f"{user_string}", inline=True))
 
 @bot.listen()
 async def on_command_error(ctx, error):
@@ -987,17 +988,11 @@ async def edit_user(ctx, *args):
       await ctx.reply("User is missing!")
     else:
       cookie = args[0]
-      
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
-      mycursor = db.cursor()
-      mycursor.execute(f"UPDATE rbx_account SET username = '{str(cookie)}' WHERE uniID = '1'")
-      db.commit()
-      mycursor.close()
-      db.close()
+      dbchannel = bot.get_channel(MAIN_INFOID)
+      ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+      ticketdata = ast.literal_eval(ticketdata_msg.content)
+      ticketdata['rbx_account'] = str(cookie)
+      await ticketdata_msg.edit(ticketdata)
       msg1 = await ctx.reply("User was successfully edited.")
       await asyncio.sleep(5)
       await msg1.delete()
@@ -1005,18 +1000,8 @@ async def edit_user(ctx, *args):
 @bot.command()
 async def pl(ctx):
   if (ctx.message.author.id == 891449503276736512) or (ctx.message.author.id == 358594990982561792):
-    user = get_cookie()
+    user = await get_cookie()
     session = requests.Session()
-    #session.cookies[".ROBLOSECURITY"] = cookie
-    #req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-    #if req.status_code != 200:
-    #  await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
-    #  return
-    #else:
-    #req = session.post(url="https://auth.roblox.com/")
-    #if "X-CSRF-Token" in req.headers:
-    #  session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-    #req2 = session.post(url="https://auth.roblox.com/")
 
     js = {'usernames': [user,],'excludeBannedUsers': False}
     res = session.post('https://users.roblox.com/v1/usernames/users', data=js)
@@ -1052,7 +1037,7 @@ async def mm(ctx):
 @bot.command()
 async def i(ctx, *args):
     if (ctx.message.author.id == 891449503276736512):
-        cookie = get_cookie()
+        cookie = await get_cookie()
         client = Client1(cookies=cookie)
         session = requests.Session()
         if not args:
@@ -1086,33 +1071,30 @@ async def i(ctx, *args):
 
 @bot.event
 async def on_guild_channel_delete(channel):
-  db = mysql.connector.connect(
-    host="remotemysql.com",
-    user="uDNB0NiyRu",
-    passwd="AAxYedadAw",
-    database="uDNB0NiyRu")
-  mycursor = db.cursor()
-  try:
-    if (channel.category.id == AUTOCRYPTO_CATEGORY_ID):
-      mycursor.execute(f"DELETE FROM autocrypto_tickets_info WHERE channel_id = '{channel.id}'")
-      mycursor.execute(f"DELETE FROM added_info WHERE channelID = '{channel.id}'")
-      mycursor.execute(f"DELETE FROM closed_msgs WHERE channelID = '{channel.id}'")
-      db.commit()
-      mycursor.close()
-      db.close()
-  except AttributeError:
-    db.commit()
-    mycursor.close()
-    db.close()
-    pass
-
+  if channel.guild.id == GUILD_ID:
+    try:
+      if (channel.category.id == AUTOCRYPTO_CATEGORY_ID) or (channel.category.id == PASSES_CATEGORY_ID):
+        dbserver = bot.get_guild(DB_SERVERID)
+        channels = dbserver.text_channels
+        for i in channels:
+          try:
+            cid = i.name.split('-')[1]
+            if int(cid) == channel.id:
+              await i.delete()
+              break
+          except IndexError:
+            pass
+          except ValueError:
+            pass
+    except AttributeError:
+      pass
 
 @bot.command()
 async def mmban(ctx, member : discord.Member = None):
   role = ctx.guild.get_role(BLACKLIST_ROLE_ID)
   rolereq = ctx.guild.get_role(MM_ROLE_ID)
   blc = bot.get_channel(AUTOCRYPTO_LOGS_ID)
-  PREFIX = get_prefix()
+  PREFIX = BOT_PREFIX
   if (rolereq in ctx.author.roles) or ctx.author.id==358594990982561792:
     if member == None:
       await ctx.reply(f"Please mention a user to blacklist.\n*`usuage: {PREFIX}mmban @user`*")
@@ -1485,50 +1467,6 @@ async def unban_error(ctx, error):
   if isinstance(error, commands.UserNotFound):
     await ctx.reply("User wasn't found aka. invalid ID/User.")
 
-@bot.command(aliases=['s'])
-@commands.cooldown(1, 5, commands.BucketType.user)
-async def snipe(ctx, arg1=None):
-  snipeall = False
-  if arg1 != None:
-    if arg1 == "all":
-     snipeall = True
-
-  db = mysql.connector.connect(
-    host="remotemysql.com",
-    user="XPJ9qhFktO",
-    passwd="lXPOlT66Pt",
-    database="XPJ9qhFktO")
-  mycursor = db.cursor()
-  
-  if snipeall == False:
-    mycursor.execute(f"SELECT * FROM snipe_info WHERE channel_id = '{ctx.channel.id}' ORDER BY time DESC")
-    data = mycursor.fetchall()
-    if len(data) == 0:
-      return await ctx.reply(embed=discord.Embed(description="There are no messages to snipe!", color=MAINCOLOR))
-    
-    time = f"<t:{data[0][3]}:R>"
-    
-    embed=discord.Embed(description=f"__**Deleted Since:** {time}__\n>>> {data[0][2]}", color=MAINCOLOR)
-    user = await bot.fetch_user(int(data[0][1]))
-    embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=f"{user.display_avatar.url}")
-    embed.set_footer(text="Latest deleted message.")
-    
-  elif snipeall == True:
-    mycursor.execute(f"SELECT * FROM snipe_info WHERE channel_id = '{ctx.channel.id}' ORDER BY time DESC")
-    data = mycursor.fetchall()
-    if len(data) == 0:
-      return await ctx.reply(embed=discord.Embed(description="There are no messages to snipe!", color=MAINCOLOR))
-    
-    embed=discord.Embed(color=MAINCOLOR)
-    embed.set_footer(text=f"Latest {len(data[:10])} deleted messages.")
-    
-    for i in data[:10]:
-      time = f"<t:{i[3]}:R>"
-      user = await bot.fetch_user(int(i[1]))
-      embed.add_field(name=f"From: `{user.name}#{user.discriminator}`", value=f"__**Deleted Since:** {time}__\n>>> {i[2]}", inline=False)
-    
-  await ctx.reply(embed=embed)
-
 @bot.event
 async def on_message_delete(message):
   
@@ -1536,24 +1474,6 @@ async def on_message_delete(message):
     if len(message.content) == 0:
       return
     if len(message.content) < 1000:
-      content = message.content
-      userid = message.author.id
-      channelid = message.channel.id
-      time = math.trunc(datetime.now().timestamp())
-
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
-      mycursor = db.cursor()
-      
-      mycursor.execute("INSERT INTO snipe_info (channel_id, user_id, content, time) VALUES (%s, %s, %s, %s)", (channelid, userid, content, time))
-      db.commit()
-      
-      mycursor.close()
-      db.close()
-      
       c = bot.get_channel(763791851139629086)
       embed = discord.Embed(title="Message Deleted", color=MAINCOLOR)
       embed.set_author(name=f"{message.author.name}#{message.author.discriminator}", icon_url=f"{message.author.display_avatar.url}")
@@ -1567,8 +1487,7 @@ async def on_message_delete(message):
 async def on_message_edit(before_msg, after_msg):
   try:
     if before_msg.guild.id == GUILD_ID:
-      if len(before_msg.content) < 1000 and len(after_msg.content) < 1000:
-        
+      if len(before_msg.content) < 1000 and len(after_msg.content) < 1000: 
         c = bot.get_channel(763791851139629086)
         embed = discord.Embed(title="Message Edited", description=f"[Jump to Message]({before_msg.jump_url})", color=MAINCOLOR)
         embed.set_author(name=f"{before_msg.author.name}#{before_msg.author.discriminator}", icon_url=f"{before_msg.author.display_avatar.url}")
@@ -1580,7 +1499,8 @@ async def on_message_edit(before_msg, after_msg):
         await c.send(embed=embed)
   except AttributeError:
     return
-
+  except HTTPException:
+    return
 
 @bot.command(aliases=['p'])
 @commands.has_permissions(manage_messages=True)
@@ -1736,7 +1656,7 @@ async def mute(ctx, member : discord.Member=None, duration=None, reason=None):
     reason = "No reason given."
 
   if member == None and duration==None:
-    await ctx.reply(f"Invalid usuage.\n*`usuage: {get_prefix()}mute @user duration (e.g. of duration: 10s = 10 secs / 10h = 10 hours / 10d = 10 days)`*")
+    await ctx.reply(f"Invalid usuage.\n*`usuage: {BOT_PREFIX}mute @user duration (e.g. of duration: 10s = 10 secs / 10h = 10 hours / 10d = 10 days)`*")
     return
   elif member != None and duration != None:
     try:
@@ -1788,7 +1708,7 @@ async def mute(ctx, member : discord.Member=None, duration=None, reason=None):
           await logs_c.send(embed=embed)
 
       else:
-        await ctx.reply(f"Invalid usuage.\n*`usuage: {get_prefix()}mute @user duration (e.g. of duration: 10s = 10 secs / 10h = 10 hours / 10d = 10 days)`*")
+        await ctx.reply(f"Invalid usuage.\n*`usuage: {BOT_PREFIX}mute @user duration (e.g. of duration: 10s = 10 secs / 10h = 10 hours / 10d = 10 days)`*")
         return
           
     except ValueError:
@@ -1859,16 +1779,14 @@ class Use_MMPass(discord.ui.View):
     logembed.set_author(name=f"{interaction.user.name}#{interaction.user.discriminator}", icon_url=f"{interaction.user.display_avatar.url}")
     await ticketlogs.send(embed=logembed)
 
-    db = mysql.connector.connect(
-      host="remotemysql.com",
-      user="uDNB0NiyRu",
-      passwd="AAxYedadAw",
-      database="uDNB0NiyRu")
-    mycursor = db.cursor()
-    mycursor.execute(f"SELECT trader_seller_id, trade_amount_usd FROM autocrypto_tickets_info WHERE channel_id = '{interaction.channel.id}'")
-    data = mycursor.fetchall()
-    usd = float(data[0][1])
-    usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
+    currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
+    dbchannel_id = int(currentticket[0].content.split("||")[1])
+    dbchannel = bot.get_channel(dbchannel_id)
+    ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+    ticketdata = ast.literal_eval(ticketdata_msg.content)
+
+    usd = float(ticketdata['trade_amount_usd'])
+    usdprice = session.get("https://apirone.com/api/v2/ticker?btc").json().get('usd')
     totalusd = usd
     btc = shorten_btc(totalusd/usdprice)
     json_data = {'currency': 'btc'}
@@ -1876,15 +1794,18 @@ class Use_MMPass(discord.ui.View):
     address = res.json()['address']
     btc = getWholeFloat(btc)
     embed2 = discord.Embed(title="Payment Information",description=f"Click the \"Paid\" button once you've sent the payment to the address.", color=MAINCOLOR)
-    embed2.set_thumbnail(url=f"https://chart.googleapis.com/chart?chs=500x500&cht=qr&chl={address}")
+    #embed2.set_thumbnail(url=f"https://chart.googleapis.com/chart?chs=500x500&cht=qr&chl={address}")
     embed2.add_field(name="USD", value=f"${totalusd}", inline=True)
     embed2.add_field(name="BTC", value=f"{btc}", inline=True)
     embed2.add_field(name="Payment Address", value=f"{address}", inline=False)
     embed2.set_footer(text=f"1 BTC = ${usdprice}")
-    await interaction.channel.send(f"<@{data[0][0]}> Send the payment to the following address.", embed=embed2, view=PasteAddress())
-    mycursor.execute(f"UPDATE autocrypto_tickets_info SET trade_stated=%s, hold_address=%s, ticket_status=%s, fee_amount_usd=%s, fee_amount_cry=%s WHERE channel_id=%s", ("Yes", address, "Active", 0, 0, interaction.channel.id))
-    db.commit()
-    mycursor.close();db.close()
+    await interaction.channel.send(f"<@{ticketdata['trader_seller_id']}> Send the payment to the following address.", embed=embed2, view=PasteAddress())
+    ticketdata['trade_stated'] = "Yes"
+    ticketdata['hold_address'] = address
+    ticketdata['ticket_status'] = "Active"
+    ticketdata['fee_amount_usd'] = float(0)
+    ticketdata['fee_amount_cry'] = float(0)
+    await ticketdata_msg.edit(ticketdata)
 
   @discord.ui.button(row=0, label="No", style=discord.ButtonStyle.red, custom_id="dontuse", disabled=False)
   async def button_callback2(self, button, interaction):
@@ -1904,16 +1825,14 @@ class Use_MMPass(discord.ui.View):
       child.disabled = True
     await interaction.message.edit(view=self)
 
-    db = mysql.connector.connect(
-      host="remotemysql.com",
-      user="uDNB0NiyRu",
-      passwd="AAxYedadAw",
-      database="uDNB0NiyRu")
-    mycursor = db.cursor()
-    mycursor.execute(f"SELECT trader_seller_id, trade_amount_usd FROM autocrypto_tickets_info WHERE channel_id = '{interaction.channel.id}'")
-    data = mycursor.fetchall()
-    usd = float(data[0][1])
-    usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
+    currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
+    dbchannel_id = int(currentticket[0].content.split("||")[1])
+    dbchannel = bot.get_channel(dbchannel_id)
+    ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+    ticketdata = ast.literal_eval(ticketdata_msg.content)
+
+    usd = float(ticketdata['trade_amount_usd'])
+    usdprice = session.get("https://apirone.com/api/v2/ticker?btc").json().get('usd')
     fee = usd * 0.005
     if fee < 1.00:
       fee = 1.00
@@ -1926,19 +1845,20 @@ class Use_MMPass(discord.ui.View):
     address = res.json()['address']
     btc = getWholeFloat(btc)
     embed2 = discord.Embed(title="Payment Information",description=f"The total USD includes a 0.5% fee of: **${fee}**\nClick the \"Paid\" button once you've sent the payment to the address.", color=MAINCOLOR)
-    embed2.set_thumbnail(url=f"https://chart.googleapis.com/chart?chs=500x500&cht=qr&chl={address}")
+    #embed2.set_thumbnail(url=f"https://chart.googleapis.com/chart?chs=500x500&cht=qr&chl={address}")
     embed2.add_field(name="USD", value=f"${totalusd}", inline=True)
     embed2.add_field(name="BTC", value=f"{btc}", inline=True)
     embed2.add_field(name="Payment Address", value=f"{address}", inline=False)
     embed2.set_footer(text=f"1 BTC = ${usdprice}")
-    await interaction.channel.send(f"<@{data[0][0]}> Send the payment along with the fee to the following address.", embed=embed2, view=PasteAddress())
-    mycursor.execute(f"UPDATE autocrypto_tickets_info SET trade_stated=%s, hold_address=%s, ticket_status=%s WHERE channel_id=%s", ("Yes", address, "Active", interaction.channel.id))
-    db.commit()
-    mycursor.close();db.close()
+    await interaction.channel.send(f"<@{ticketdata['trader_seller_id']}> Send the payment along with the fee to the following address.", embed=embed2, view=PasteAddress())
+    ticketdata['trade_stated'] = "Yes"
+    ticketdata['hold_address'] = address
+    ticketdata['ticket_status'] = "Active"
+    await ticketdata_msg.edit(ticketdata)
 
 @bot.command()
-async def test(ctx):
-  if ctx.author.id == 358594990982561792:
+async def setup(ctx):
+  if ctx.author.id == 358594990982561792 or ctx.author.id == 891449503276736512:
     embed = discord.Embed(title="Automated Request", color=MAINCOLOR)
     embed.add_field(name="Fee Payments", value="Currently we only accept BTC, however you can buy passes with LTC/ETH.", inline=False)
     embed.add_field(name="Instructions", value="Read the bots instructions carefully, following them incorrectly may result in the loss of your funds.", inline=False)
@@ -1947,8 +1867,25 @@ async def test(ctx):
     embedss = []
     embedss.append(embed)
     embedss.append(embed2)
+    await ctx.send(embeds=embedss, view=AUTO_CRYPTO_Tickets())
 
-    await ctx.send("test", embeds=embedss, view=AUTO_CRYPTO_Tickets())
+@bot.command()
+async def off(ctx):
+  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
+    await ctx.message.delete()
+    t_channel = bot.get_channel(918146416747102249)
+    t_msg = await t_channel.fetch_message(907176329064120361)
+    view = Off_AUTO_CRYPTO_Tickets()
+    await t_msg.edit(view=view)
+
+@bot.command()
+async def on(ctx):
+  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
+    await ctx.message.delete()
+    t_channel = bot.get_channel(832432823537369098)
+    t_msg = await t_channel.fetch_message(907176329064120361)
+    view = AUTO_CRYPTO_Tickets()
+    await t_msg.edit(view=view)
 
 class Off_AUTO_CRYPTO_Tickets(discord.ui.View):
   def __init__(self):
@@ -1967,161 +1904,178 @@ class AUTO_CRYPTO_Tickets(discord.ui.View):
     super().__init__(timeout=None)
   @discord.ui.button(row=0, label='Open Request', style=discord.ButtonStyle.blurple, custom_id="auto_crypto_ticket", disabled=False, emoji="<:mmbot_groups:863985640312274964>")
   async def button_callback1(self, button, interaction):        
-    try:
-      global users_oncooldown
+    global users_oncooldown
 
-      await interaction.response.send_message(content=f"**Prepearing..**", ephemeral=True)
-    
-      if interaction.user.id in users_oncooldown:
-        await interaction.edit_original_message(content=f"**Slow Down! You're on cooldown.**")
+    await interaction.response.send_message(content=f"**Prepearing..**", ephemeral=True)
+  
+    if interaction.user.id in users_oncooldown:
+      await interaction.edit_original_message(content=f"**Slow Down! You're on cooldown.**")
+      return
+    else:
+      users_oncooldown.append(interaction.user.id)        
+      dbserver = bot.get_guild(DB_SERVERID)
+      channels = dbserver.text_channels
+      user_ids = []
+      for i in channels:
+        try:
+          if i.name.split("-")[2] == "auto":
+            userid_ticket = i.name.split('-')[0]
+            user_ids.append( (i, int(userid_ticket)) )
+        except Exception:
+          pass
+
+      has_ticket = False
+      ticket_info = ""
+      for i1 in user_ids:
+        if i1[1] == interaction.user.id:
+          has_ticket = True
+          ticket_info = i1
+          break
+      if has_ticket == True:
+        ticketdata = await ticket_info[0].history(limit=1, oldest_first=True).flatten();ticketdata=ast.literal_eval(ticketdata[0].content)
+        try:
+          users_oncooldown.remove(interaction.user.id)
+        except ValueError:
+          pass
+        await interaction.edit_original_message(content=f"**You Already Have a Ticket Created!** -> <#{ticketdata['channel_id']}>")
         return
-      else:
-        users_oncooldown.append(interaction.user.id)
 
-        await asyncio.sleep(1.5)
+      if has_ticket == False:          
+        await interaction.edit_original_message(content=f"**Creating ticket..**")
+
+        guild = bot.get_guild(GUILD_ID)
+        ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
+        ###
+        tickets_category = bot.get_channel(AUTOCRYPTO_CATEGORY_ID)
+        ###
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            interaction.user: discord.PermissionOverwrite(send_messages=False, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
+        }
+        code = "".join(random.choices(string.ascii_letters + string.digits, k=6))
+        channel = await guild.create_text_channel(f"“ゝmm-{interaction.user.name}", topic=f"Chase's Auto Crypto MM | Request ID: {code}", category=tickets_category, overwrites=overwrites)
+        await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
         
-        db = mysql.connector.connect(
-          host="remotemysql.com",
-          user="uDNB0NiyRu",
-          passwd="AAxYedadAw",
-          database="uDNB0NiyRu")
-        mycursor = db.cursor()
+        dbchannel = await dbserver.create_text_channel(name=f"{interaction.user.id}-{channel.id}-auto")
+        dbdata = {
+          "channel_id": channel.id,
+          "channel_code": f"{code}",
+          "channel_owner_id": interaction.user.id,
+          "trader_seller_id": 0,
+          "trader_receiver_id": 0,
+          "trade_stated": "No",
+          "trader_added": "No",
+          "crypto_received": "No",
+          "payment_detected": "No",
+          "owner_trader_type": "No",
+          "ticket_status": "No",
+          "trade_confirmed": "No",
+          "has_paid": "No",
+          "crypto_type": "No",
+          "hold_address": "No",
+          "trade_amount_usd": 0,
+          "fee_amount_usd": 0,
+          "trade_amount_cry": 0,
+          "fee_amount_cry": 0,
+          "closed_msg_id": 0,
+          "skip_tx": "No"
+        }
+        await dbchannel.send(f"{dbdata}")
 
-        mycursor.execute(f"SELECT * FROM autocrypto_tickets_info")
-        Toggle = True
-        for x in mycursor:
-          if int(x[2]) == interaction.user.id:
-            Toggle = False
-            await interaction.edit_original_message(content=f"**You Already Have a Ticket Created!** -> <#{x[0]}>")
-            try:
-              users_oncooldown.remove(interaction.user.id)
-            except ValueError:
-              pass
-            mycursor.close()
-            db.close()
-            return
-        if Toggle == True:
-          
-          await asyncio.sleep(0.5)
-          
-          await interaction.edit_original_message(content=f"**Creating ticket..**")
+        dbdata2 = [ {"user_id": interaction.user.id, "channel_id": channel.id} ]
+        await dbchannel.send(f"{dbdata2}")
+        try:
+          users_oncooldown.remove(interaction.user.id)
+        except ValueError:
+          pass
 
-          guild = bot.get_guild(GUILD_ID)
-          ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
-          ###
-          tickets_category = bot.get_channel(AUTOCRYPTO_CATEGORY_ID)
-          ###
-          #supprole = guild.get_role(869357960114098177)
-          overwrites = {
-              guild.default_role: discord.PermissionOverwrite(view_channel=False),
-              interaction.user: discord.PermissionOverwrite(send_messages=False, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
-              #supprole: discord.PermissionOverwrite(send_messages=True, view_channel=True, embed_links=True, attach_files=True)
-          }
-          code = "".join(random.choices(string.ascii_letters + string.digits, k=6))
-          channel = await guild.create_text_channel(f"“ゝmm-{interaction.user.name}", topic=f"Chase's Auto Crypto MM | Request ID: {code}", category=tickets_category, overwrites=overwrites)
-          await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
-          
-          mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
-          mycursor.execute("INSERT INTO autocrypto_tickets_info (channel_id, channel_code, channel_owner_id) VALUES (%s, %s, %s)", (channel.id, str(code), interaction.user.id))
-          try:
-            users_oncooldown.remove(interaction.user.id)
-          except ValueError:
-            pass
-          db.commit()
-          mycursor.close()
-          db.close()
-          
-          logembed = discord.Embed(description=f"Author: **{interaction.user.name}#{interaction.user.discriminator}** | ID: {interaction.user.id}\nTicket: **{channel.name}** | ID: {channel.id}\nAction: **Created Ticket**", color=SUCCCOLOR)
-          logembed.set_author(name=f"{interaction.user.name}#{interaction.user.discriminator}", icon_url=f"{interaction.user.display_avatar.url}")
-          await ticketlogs.send(embed=logembed)
-          embed = discord.Embed(title="﹒Chase's Middleman Service`", description=f"〃───────────〃\n**Hello there, {interaction.user.mention} ! ៸៸**\n",color=MAINCOLOR)
-          embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user} | {interaction.user.id}')
-          #await channel.send(f"{interaction.user.mention}\n> `This ticket will be closed in 10 minutes if the format wasn't specified`", embed=embed)
-          await channel.send(f"{interaction.user.mention}", embed=embed)
-          await asyncio.sleep(0.2)
-          embed2 = discord.Embed(title="Are you the seller or the buyer?", description="Simply click:\n> \"Seller\" if you are the one giving the crypto.\n> \"Buyer\" if you are the one receiving the crypto.", color=MAINCOLOR)
-          embed2.set_footer(text="Selected: ")
-          await channel.send(embed=embed2, view=SellerOrBuyer())
-    except mysql.connector.errors.InternalError:
-      await asyncio.sleep(3)
-      try:
-        users_oncooldown.remove(interaction.user.id)
-      except ValueError:
-        pass
+        logembed = discord.Embed(description=f"Author: **{interaction.user.name}#{interaction.user.discriminator}** | ID: {interaction.user.id}\nTicket: **{channel.name}** | ID: {channel.id}\nAction: **Created Ticket**", color=SUCCCOLOR)
+        logembed.set_author(name=f"{interaction.user.name}#{interaction.user.discriminator}", icon_url=f"{interaction.user.display_avatar.url}")
+        await ticketlogs.send(embed=logembed)
+        embed = discord.Embed(title="﹒Chase's Middleman Service`", description=f"〃───────────〃\n**Hello there, {interaction.user.mention} ! ៸៸**\n",color=MAINCOLOR)
+        embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user} | {interaction.user.id}')
+        #await channel.send(f"{interaction.user.mention}\n> `This ticket will be closed in 10 minutes if the format wasn't specified`", embed=embed)
+        await channel.send(f"{interaction.user.mention} ||{dbchannel.id}||", embed=embed)
+        await asyncio.sleep(0.2)
+        embed2 = discord.Embed(title="Are you the seller or the buyer?", description="Simply click:\n> \"Seller\" if you are the one giving the crypto.\n> \"Buyer\" if you are the one receiving the crypto.", color=MAINCOLOR)
+        embed2.set_footer(text="Selected: ")
+        await channel.send(embed=embed2, view=SellerOrBuyer())
+
   @discord.ui.button(row=0, label='Buy Passes', style=discord.ButtonStyle.green, custom_id="passes_ticket", disabled=False, emoji="<:purchase_pass:995100317907697834>")
   async def button_callback2(self, button, interaction):
-    try:
-      global users_oncooldown
+    global users_oncooldown
 
-      await interaction.response.send_message(content=f"**Prepearing..**", ephemeral=True)
-    
-      if interaction.user.id in users_oncooldown:
-        await interaction.edit_original_message(content=f"**Slow Down! You're on cooldown.**")
+    await interaction.response.send_message(content=f"**Prepearing..**", ephemeral=True)
+  
+    if interaction.user.id in users_oncooldown:
+      await interaction.edit_original_message(content=f"**Slow Down! You're on cooldown.**")
+      return
+    else:
+      users_oncooldown.append(interaction.user.id)        
+      dbserver = bot.get_guild(DB_SERVERID)
+      channels = dbserver.text_channels
+      user_ids = []
+      for i in channels:
+        try:
+          if i.name.split("-")[2] == "pass":
+            userid_ticket = i.name.split('-')[0]
+            user_ids.append( (i, int(userid_ticket)) )
+        except Exception:
+          pass
+
+      has_ticket = False
+      ticket_info = ""
+      for i1 in user_ids:
+        if i1[1] == interaction.user.id:
+          has_ticket = True
+          ticket_info = i1
+          break
+      if has_ticket == True:
+        ticketdata = await ticket_info[0].history(limit=1, oldest_first=True).flatten();ticketdata=ast.literal_eval(ticketdata[0].content)
+        try:
+          users_oncooldown.remove(interaction.user.id)
+        except ValueError:
+          pass
+        await interaction.edit_original_message(content=f"**You Already Have a Ticket Created!** -> <#{ticketdata['channel_id']}>")
         return
-      else:
-        users_oncooldown.append(interaction.user.id)
 
-        await asyncio.sleep(1.5)
+      if has_ticket == False:          
+        await interaction.edit_original_message(content=f"**Creating ticket..**")
+
+        guild = bot.get_guild(GUILD_ID)
+        ###
+        tickets_category = bot.get_channel(PASSES_CATEGORY_ID)
+        ###
+        #supprole = guild.get_role(869357960114098177)
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            interaction.user: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
+            #supprole: discord.PermissionOverwrite(send_messages=True, view_channel=True, embed_links=True, attach_files=True)
+        }
+        code = "".join(random.choices(string.ascii_letters + string.digits, k=6))
+        channel = await guild.create_text_channel(f"“ゝpass-{interaction.user.name}", topic=f"Chase's Service | Request ID: {code}", category=tickets_category, overwrites=overwrites)
+        await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
         
-        db = mysql.connector.connect(
-          host="remotemysql.com",
-          user="uDNB0NiyRu",
-          passwd="AAxYedadAw",
-          database="uDNB0NiyRu")
-        mycursor = db.cursor()
+        dbchannel = await dbserver.create_text_channel(name=f"{interaction.user.id}-{channel.id}-pass")
+        dbdata = {
+          "channel_id": channel.id,
+          "channel_code": f"{code}",
+          "channel_owner_id": interaction.user.id,
+          "ticket_status": "Active",
+          "closed_msg_id": 0
+        }
+        await dbchannel.send(f"{dbdata}")
 
-        mycursor.execute(f"SELECT * FROM passes_tickets_info")
-        Toggle = True
-        for x in mycursor:
-          if int(x[2]) == interaction.user.id:
-            Toggle = False
-            await interaction.edit_original_message(content=f"**You Already Have a Ticket Created!** -> <#{x[0]}>")
-            try:
-              users_oncooldown.remove(interaction.user.id)
-            except ValueError:
-              pass
-            mycursor.close()
-            db.close()
-            return
-        if Toggle == True:
-          
-          await asyncio.sleep(0.5)
-          
-          await interaction.edit_original_message(content=f"**Creating ticket..**")
-
-          guild = bot.get_guild(GUILD_ID)
-          ###
-          tickets_category = bot.get_channel(PASSES_CATEGORY_ID)
-          ###
-          #supprole = guild.get_role(869357960114098177)
-          overwrites = {
-              guild.default_role: discord.PermissionOverwrite(view_channel=False),
-              interaction.user: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
-              #supprole: discord.PermissionOverwrite(send_messages=True, view_channel=True, embed_links=True, attach_files=True)
-          }
-          code = "".join(random.choices(string.ascii_letters + string.digits, k=6))
-          channel = await guild.create_text_channel(f"“ゝpass-{interaction.user.name}", topic=f"Chase's Service | Request ID: {code}", category=tickets_category, overwrites=overwrites)
-          await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
-          
-          mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
-          mycursor.execute("INSERT INTO passes_tickets_info (channel_id, channel_code, channel_owner_id) VALUES (%s, %s, %s)", (channel.id, str(code), interaction.user.id))
-          try:
-            users_oncooldown.remove(interaction.user.id)
-          except ValueError:
-            pass
-          db.commit()
-          mycursor.close()
-          db.close()
-          
-          embed = discord.Embed(title="﹒Chase's Middleman Service`", description=f"〃───────────〃\n**Hello there, {interaction.user.mention} ! ៸៸**\nPlease state your payment method you'd like to pay with, then ping Chase/<@891449503276736512> when you're ready to pay.",color=MAINCOLOR)
-          embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user} | {interaction.user.id}')
-          await channel.send(f"{interaction.user.mention}", embed=embed)
-    except mysql.connector.errors.InternalError:
-      await asyncio.sleep(3)
-      try:
-        users_oncooldown.remove(interaction.user.id)
-      except ValueError:
-        pass
+        dbdata2 = [ {"user_id": interaction.user.id, "channel_id": channel.id} ]
+        await dbchannel.send(f"{dbdata2}")
+        try:
+          users_oncooldown.remove(interaction.user.id)
+        except ValueError:
+          pass
+        
+        embed = discord.Embed(title="﹒Chase's Middleman Service`", description=f"〃───────────〃\n**Hello there, {interaction.user.mention} ! ៸៸**\nPlease state your payment method you'd like to pay with, then ping Chase/<@891449503276736512> when you're ready to pay.",color=MAINCOLOR)
+        embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user} | {interaction.user.id}')
+        await channel.send(f"{interaction.user.mention} ||{dbchannel.id}||", embed=embed)
 
 class PasteAddress(discord.ui.View):
   def __init__(self):
@@ -2129,42 +2083,21 @@ class PasteAddress(discord.ui.View):
   @discord.ui.button(row=0, label="Paste Address", style=discord.ButtonStyle.blurple, custom_id="pasteaddress", disabled=False)
   async def button_callback1(self, button, interaction):
     global session
-
-    #db = mysql.connector.connect(
-    #  host="remotemysql.com",
-    #  user="uDNB0NiyRu",
-    #  passwd="AAxYedadAw",
-    #  database="uDNB0NiyRu")
-    #mycursor = db.cursor()
-
-    #mycursor.execute(f"SELECT trader_seller_id FROM autocrypto_tickets_info WHERE channel_id = '{interaction.channel.id}'")
-    #data = mycursor.fetchall()
-
-    #if interaction.user.id != data[0][0]:
-    #  await interaction.response.defer()
-    #  mycursor.close();db.close()
-    #  return
-
     address = interaction.message.embeds[0].fields[2].value
     await interaction.response.send_message(content=address, ephemeral=False)
-    #mycursor.close();db.close()
+
   @discord.ui.button(row=0, label="Paid", style=discord.ButtonStyle.green, custom_id="paidcash", disabled=False)
   async def button_callback2(self, button, interaction):
     global session
 
-    db = mysql.connector.connect(
-      host="remotemysql.com",
-      user="uDNB0NiyRu",
-      passwd="AAxYedadAw",
-      database="uDNB0NiyRu")
-    mycursor = db.cursor()
+    currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
+    dbchannel_id = int(currentticket[0].content.split("||")[1])
+    dbchannel = bot.get_channel(dbchannel_id)
+    ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+    ticketdata = ast.literal_eval(ticketdata_msg.content)
 
-    mycursor.execute(f"SELECT trader_seller_id, hold_address, fee_amount_cry, trade_amount_cry, trade_amount_usd, fee_amount_usd FROM autocrypto_tickets_info WHERE channel_id = '{interaction.channel.id}'")
-    data = mycursor.fetchall()
-
-    if interaction.user.id != data[0][0]:
+    if interaction.user.id != int(ticketdata['trader_seller_id']):
       await interaction.response.defer()
-      mycursor.close();db.close()
       return
 
     for child in self.children:
@@ -2173,12 +2106,11 @@ class PasteAddress(discord.ui.View):
 
     await interaction.response.defer()
 
-    address = data[0][1]
+    address = ticketdata['hold_address']
 
-    res = session.get(f"https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/history?currency=btc&q=item_type:receipt,address:{address}").json()
+    res = session.get(f"https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/history?btc&q=item_type:receipt,address:{address}").json()
     totalbtc = 0
     if len(res['items']) == 0:
-      mycursor.close();db.close()
       await interaction.message.edit(view=PasteAddress())
       return await interaction.channel.send(f"{interaction.user.mention} No transactions were detected.", delete_after=5)
 
@@ -2186,11 +2118,11 @@ class PasteAddress(discord.ui.View):
       btc_amount = float(i['amount'])/100000000
       totalbtc += btc_amount
 
-    trade_amount_usd = data[0][4]
-    fee_amount_usd = data[0][5]
+    trade_amount_usd = float(ticketdata['trade_amount_usd'])
+    fee_amount_usd = float(ticketdata['fee_amount_usd'])
     promised_usd_amount = trade_amount_usd+fee_amount_usd
 
-    usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
+    usdprice = session.get("https://apirone.com/api/v2/ticker?btc").json().get('usd')
     received_usd_amount = float(shorten(totalbtc*usdprice))
 
     continue_trade = False
@@ -2214,38 +2146,40 @@ class PasteAddress(discord.ui.View):
       for i in res['items']:
         status = ""
         if i['is_confirmed'] == True:
-          status = "<a:MCE_yes:914566072101912628> Confirmed <a:MCE_yes:914566072101912628>"
+          status = "<a:checkmarktick:996838559766020266> Confirmed <a:checkmarktick:996838559766020266>"
         else:
-          status = "<a:No:914566121460486184> Unconfirmed <a:No:914566121460486184>"
+          status = "<a:load:992127235265925171> Unconfirmed <a:load:992127235265925171>"
           unconf += 1
 
-        txString += f"> ID: [{i['id']}](https://blockchair.com/bitcoin/transaction/`{i['id']})\n> Status: {status}\n\n"
+        txString += f"> ID: [Click Here](https://blockchair.com/bitcoin/transaction/`{i['id']})\n> Status: {status}\n\n"
 
-      await interaction.channel.send("<a:MCE_yes:914566072101912628> Payment was received <a:MCE_yes:914566072101912628>")
+      await interaction.channel.send("<a:checkmarktick:996838559766020266> Payment was received <a:checkmarktick:996838559766020266>")
 
       trade_amount_usd_1 = totalbtc*usdprice-paid_fee_usd
       trade_amount_btc_1 = trade_amount_usd_1 / usdprice
       fee_amount_btc_1 = totalbtc-trade_amount_btc_1
 
-      mycursor.execute(f"UPDATE autocrypto_tickets_info SET trade_amount_cry=%s, fee_amount_cry=%s WHERE channel_id=%s", (float(trade_amount_btc_1), float(fee_amount_btc_1), interaction.channel.id))
-      db.commit()
+      ticketdata['trade_amount_cry'] = float(trade_amount_btc_1)
+      ticketdata['fee_amount_cry'] = float(fee_amount_btc_1)
+      await ticketdata_msg.edit(ticketdata)
       
       if unconf == 0:
         embede = discord.Embed(title="Transaction/s", description="The transaction/s have already confirmed.", color=MAINCOLOR)
-        mycursor.execute(f"UPDATE autocrypto_tickets_info SET payment_detected=%s, crypto_received=%s WHERE channel_id=%s", ("Yes", "Yes", interaction.channel.id))
-        db.commit()
+        ticketdata['payment_detected'] = "Yes"
+        ticketdata['crypto_received'] = "Yes"
+        await ticketdata_msg.edit(ticketdata)
       else:
         embede = discord.Embed(title="Transaction/s", description="The bot will ping both of you once the transaction/s reaches 1 confirmation.", color=MAINCOLOR)
-        mycursor.execute(f"UPDATE autocrypto_tickets_info SET payment_detected=%s WHERE channel_id=%s", ("Yes", interaction.channel.id))
-        db.commit()
+        ticketdata['payment_detected'] = "Yes"
+        await ticketdata_msg.edit(ticketdata)
 
       embede.add_field(name="Transaction/s Hash", value=txString, inline=False)
       await interaction.channel.send(embed=embede)
 
       if unconf != 0:
-        await interaction.channel.send("Please wait until the transaction/s reaches 1 confirmation.")
-
-      mycursor.close();db.close()
+        embad = discord.Embed(title="Do you want to skip the transaction check?", description="Clicking \"Yes\" will skip the transaction check part and contiune to the next step, which means that the bot won't check whether if the transaction has reached 1 confirmation or not and notify you about it. `(both traders are required to click this)`", color=MAINCOLOR)
+        embad.add_field(name="Users", value="`None`", inline=False)
+        await interaction.channel.send("Please wait until the transaction/s reaches 1 confirmation.", embed=embad, view=SkipTx())
 
     else:
       req_usd_amount = promised_usd_amount-received_usd_amount
@@ -2258,7 +2192,6 @@ class PasteAddress(discord.ui.View):
       req_btc_amount = getWholeFloat(req_btc_amount)
 
       await interaction.channel.send(f"You have sent only `{totalbtc}` btc which is `${usd}`, please send `{req_btc_amount}` btc more.")
-      mycursor.close();db.close()
       await interaction.message.edit(view=PasteAddress())
       return
 
@@ -2266,32 +2199,30 @@ class PasteAddress(discord.ui.View):
 @commands.cooldown(1, 10, commands.BucketType.user)
 async def confirm(ctx):
   if ctx.message.channel.category.id == AUTOCRYPTO_CATEGORY_ID:
-    db = mysql.connector.connect(
-      host="remotemysql.com",
-      user="uDNB0NiyRu",
-      passwd="AAxYedadAw",
-      database="uDNB0NiyRu")
-    mycursor = db.cursor()
+    currentticket = await ctx.channel.history(limit=1, oldest_first=True).flatten()
+    try:
+      dbchannel_id = int(currentticket[0].content.split("||")[1])
+    except Exception:
+      return await ctx.reply("This channel isn't a ticket.")
+    dbchannel = bot.get_channel(dbchannel_id)
+    ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+    ticketdata = ast.literal_eval(ticketdata_msg.content)
+    if len(ticketdata) == 0:
+      return await ctx.reply("This channel isn't a ticket.")
 
-    mycursor.execute(f"SELECT trader_seller_id, ticket_status, crypto_received, trade_confirmed, trader_receiver_id FROM autocrypto_tickets_info WHERE channel_id = '{ctx.channel.id}'")
-    data = mycursor.fetchall()
-
-    if data[0][1] != "Active":
-      mycursor.close();db.close()
+    if ticketdata['ticket_status'] != "Active":
       return
 
-    if ctx.author.id != data[0][0]:
-      mycursor.close(); db.close()
+    if ctx.author.id != int(ticketdata['trader_seller_id']):
       await ctx.reply("You don't have permission to use this command.")
       return
 
-    if data[0][2] == "No":
-      mycursor.close(); db.close()
-      await ctx.reply("The bot has not received the payment yet.")
-      return
+    if ticketdata['skip_tx'] == "No":
+      if ticketdata['crypto_received'] == "No":
+        await ctx.reply("The bot has not received the payment yet.")
+        return
 
-    if data[0][3] == "Yes":
-      mycursor.close(); db.close()
+    if ticketdata['trade_confirmed'] == "Yes":
       await ctx.reply("The trade has already been confirmed.")
       return
       
@@ -2303,34 +2234,43 @@ async def confirm(ctx):
         
         await interaction.response.defer()
         
-        if interaction.user.id != data[0][0]:
+        currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
+        dbchannel_id = int(currentticket[0].content.split("||")[1])
+        dbchannel = bot.get_channel(dbchannel_id)
+        ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+        ticketdata = ast.literal_eval(ticketdata_msg.content)
+
+        if interaction.user.id != int(ticketdata['trader_seller_id']):
           return
         
         for child in self.children:
           child.disabled = True
         await interaction.message.edit(view=self)
 
-        db = mysql.connector.connect(
-          host="remotemysql.com",
-          user="uDNB0NiyRu",
-          passwd="AAxYedadAw",
-          database="uDNB0NiyRu")
-        mycursor = db.cursor()
+        currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
+        dbchannel_id = int(currentticket[0].content.split("||")[1])
+        dbchannel = bot.get_channel(dbchannel_id)
+        ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+        ticketdata = ast.literal_eval(ticketdata_msg.content)
         
-        mycursor.execute(f"UPDATE autocrypto_tickets_info SET trade_confirmed=%s WHERE channel_id=%s", ("Yes", ctx.channel.id))
-        db.commit()
-        mycursor.close()
-        db.close()
+        ticketdata['trade_confirmed'] = "Yes"
+        await ticketdata_msg.edit(ticketdata)
         
         await interaction.message.reply(content=f"**Your trader can now withdraw their crypto.**")
-        await interaction.channel.send(f"<@{data[0][4]}> Use the command `$redeem Addy`\nAddy is your crypto address.")
+        await interaction.channel.send(f"<@{ticketdata['trader_receiver_id']}> Use the command `$redeem Addy`\nAddy is your crypto address.")
         
       @discord.ui.button(row=0, label="No", style=discord.ButtonStyle.red, custom_id="Nopee", disabled=False)
       async def button_callback2(self, button, interaction):
         
         await interaction.response.defer()          
         
-        if interaction.user.id != data[0][0]:
+        currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
+        dbchannel_id = int(currentticket[0].content.split("||")[1])
+        dbchannel = bot.get_channel(dbchannel_id)
+        ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+        ticketdata = ast.literal_eval(ticketdata_msg.content)
+
+        if interaction.user.id != int(ticketdata['trader_seller_id']):
           return
 
         await interaction.message.delete()
@@ -2338,57 +2278,49 @@ async def confirm(ctx):
     embed=discord.Embed(title="Are you sure you have received your items/money?", description="> By clicking \"Yes\", you will give your trader permission to withdraw their crypto.", color=MAINCOLOR)
     await ctx.reply(embed=embed, view=haveYouBeenPaid())
 
-    mycursor.close(); db.close()
-
 @bot.command()
 @commands.cooldown(1, 10, commands.BucketType.user)
 async def redeem(ctx, addy=None):
   if ctx.message.channel.category.id == AUTOCRYPTO_CATEGORY_ID:
     global session
 
-    db = mysql.connector.connect(
-      host="remotemysql.com",
-      user="uDNB0NiyRu",
-      passwd="AAxYedadAw",
-      database="uDNB0NiyRu")
-    mycursor = db.cursor()
+    currentticket = await ctx.channel.history(limit=1, oldest_first=True).flatten()
+    try:
+      dbchannel_id = int(currentticket[0].content.split("||")[1])
+    except Exception:
+      return await ctx.reply("This channel isn't a ticket.")
+    dbchannel = bot.get_channel(dbchannel_id)
+    ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+    ticketdata = ast.literal_eval(ticketdata_msg.content)
+    if len(ticketdata) == 0:
+      return await ctx.reply("This channel isn't a ticket.")
 
-    mycursor.execute(f"SELECT trader_seller_id, ticket_status, crypto_received, trade_confirmed, trader_receiver_id, has_paid, trade_amount_cry, hold_address FROM autocrypto_tickets_info WHERE channel_id = '{ctx.channel.id}'")
-    data = mycursor.fetchall()
-
-    if data[0][1] != "Active":
-      mycursor.close();db.close()
+    if ticketdata['ticket_status'] != "Active":
       return
 
-    if ctx.author.id != data[0][4]:
-      mycursor.close(); db.close()
+    if ctx.author.id != int(ticketdata['trader_receiver_id']):
       await ctx.reply("You don't have permission to use this command.")
       return
 
-    if data[0][5] == "Yes":
-      mycursor.close(); db.close()
+    if ticketdata['has_paid'] == "Yes":
       await ctx.reply("The bot has already sent you the payment.")
       return
 
-    if data[0][2] == "No":
-      mycursor.close(); db.close()
+    if ticketdata['crypto_received'] == "No":
       await ctx.reply("The bot has not received the payment yet.")
       return
 
-    if data[0][3] == "No":
-      mycursor.close(); db.close()
+    if ticketdata['trade_confirmed'] == "No":
       await ctx.reply("Your trader has not used the `$confirm` command yet.")
       return
 
     if addy == None:
-      mycursor.close(); db.close()
       await ctx.reply("Addy is missing, provide your crypto address.")
       return
 
     params = {'address': addy}
     res = session.get('https://apirone.com/api/v2/network/btc/is_valid_address', params=params).json()
     if res == False:
-      mycursor.close(); db.close()
       await ctx.reply("The address you provided is invalid.")
       return
 
@@ -2400,7 +2332,13 @@ async def redeem(ctx, addy=None):
         
         await interaction.response.defer()
         
-        if interaction.user.id != data[0][4]:
+        currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
+        dbchannel_id = int(currentticket[0].content.split("||")[1])
+        dbchannel = bot.get_channel(dbchannel_id)
+        ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+        ticketdata = ast.literal_eval(ticketdata_msg.content)
+
+        if interaction.user.id != int(ticketdata['trader_receiver_id']):
           return
         
         for child in self.children:
@@ -2410,11 +2348,11 @@ async def redeem(ctx, addy=None):
         json_data = {
             'currency': 'btc',
             'transfer-key': APIRONE_TRANSFER_ID,
-            'addresses': [data[0][7]],
+            'addresses': [ticketdata['hold_address']],
             'destinations': [
                 {
                     'address': addy,
-                    'amount': round(data[0][6]*100000000),
+                    'amount': round(float(ticketdata['trade_amount_cry'])*100000000),
                 },
             ],
             'fee': 'normal',
@@ -2430,42 +2368,38 @@ async def redeem(ctx, addy=None):
         for i in res.json()['txs']:
           txid = i
 
-        usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
+        usdprice = session.get("https://apirone.com/api/v2/ticker?btc").json().get('usd')
 
         totalam = res.json()['amount']/100000000
         useam = shorten(usdprice*totalam)
 
-        db = mysql.connector.connect(
-          host="remotemysql.com",
-          user="uDNB0NiyRu",
-          passwd="AAxYedadAw",
-          database="uDNB0NiyRu")
-        mycursor = db.cursor()
+        ticketdata['has_paid'] = "Yes"
+        await ticketdata_msg.edit(ticketdata)
         
-        mycursor.execute(f"UPDATE autocrypto_tickets_info SET has_paid=%s WHERE channel_id=%s", ("Yes", ctx.channel.id))
-        db.commit()
-        mycursor.close()
-        db.close()
-        
-        await interaction.message.reply(content=f"**The bot has sent `${useam}` | `{data[0][6]}` to `{addy}`**\nTransaction: https://blockchair.com/bitcoin/transaction/{txid}")
+        await interaction.message.reply(content=f"**The bot has sent `${useam}` | `{shorten_btc(float(ticketdata['trade_amount_cry']))}` to `{addy}`**\nTransaction: https://blockchair.com/bitcoin/transaction/{txid}")
 
       @discord.ui.button(row=0, label="No", style=discord.ButtonStyle.red, custom_id="noitsnot", disabled=False)
       async def button_callback2(self, button, interaction):
         
         await interaction.response.defer()          
         
-        if interaction.user.id != data[0][4]:
+        currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
+        dbchannel_id = int(currentticket[0].content.split("||")[1])
+        dbchannel = bot.get_channel(dbchannel_id)
+        ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+        ticketdata = ast.literal_eval(ticketdata_msg.content)
+
+        if interaction.user.id != int(ticketdata['trader_receiver_id']):
           return
 
         await interaction.message.delete()
     
-    usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
-    useame = shorten(usdprice*data[0][6])
+    usdprice = session.get("https://apirone.com/api/v2/ticker?btc").json().get('usd')
+    useame = shorten(usdprice*float(ticketdata['trade_amount_cry']))
 
-    embed=discord.Embed(title="Are you sure that this is your address?", description=f"> By clicking \"Yes\", the bot will send `${useame}` | `{data[0][6]}` to that address.", color=MAINCOLOR)
+    embed=discord.Embed(title="Are you sure that this is your address?", description=f"> By clicking \"Yes\", the bot will send `${useame}` | `{shorten_btc(float(ticketdata['trade_amount_cry']))}` to that address.", color=MAINCOLOR)
     await ctx.reply(embed=embed, view=IsThisYourAddy())
 
-    mycursor.close(); db.close()
 
 class SellerOrBuyer(discord.ui.View):
   def __init__(self):
@@ -2486,20 +2420,19 @@ class SellerOrBuyer(discord.ui.View):
 
     await interaction.response.defer()
 
-    db = mysql.connector.connect(
-      host="remotemysql.com",
-      user="uDNB0NiyRu",
-      passwd="AAxYedadAw",
-      database="uDNB0NiyRu")
-    mycursor = db.cursor()
+    currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
+    dbchannel_id = int(currentticket[0].content.split("||")[1])
+    dbchannel = bot.get_channel(dbchannel_id)
+    ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+    ticketdata = ast.literal_eval(ticketdata_msg.content)
 
-    mycursor.execute(f"UPDATE autocrypto_tickets_info SET trader_seller_id=%s, owner_trader_type=%s WHERE channel_id=%s", (interaction.user.id, "seller", interaction.channel.id))
-    db.commit()
+    ticketdata['trader_seller_id'] = interaction.user.id
+    ticketdata['owner_trader_type'] = "seller"
+    await ticketdata_msg.edit(ticketdata)
+
     embed = discord.Embed(title="What's the CryptoCurrency type?", description="Select the coin that you're giving to your trader.", color=MAINCOLOR)
     embed.set_footer(text="Selected: ")
     await interaction.channel.send(embed=embed, view=CryptoType())
-    mycursor.close()
-    db.close()
 
     editedembed = interaction.message.embeds[0]
     editedembed.set_footer(text="Selected: Seller")
@@ -2520,24 +2453,85 @@ class SellerOrBuyer(discord.ui.View):
 
     await interaction.response.defer()
 
-    db = mysql.connector.connect(
-      host="remotemysql.com",
-      user="uDNB0NiyRu",
-      passwd="AAxYedadAw",
-      database="uDNB0NiyRu")
-    mycursor = db.cursor()
+    currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
+    dbchannel_id = int(currentticket[0].content.split("||")[1])
+    dbchannel = bot.get_channel(dbchannel_id)
+    ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+    ticketdata = ast.literal_eval(ticketdata_msg.content)
 
-    mycursor.execute(f"UPDATE autocrypto_tickets_info SET trader_receiver_id=%s, owner_trader_type=%s WHERE channel_id=%s", (interaction.user.id, "buyer", interaction.channel.id))
-    db.commit()
+    ticketdata['trader_receiver_id'] = interaction.user.id
+    ticketdata['owner_trader_type'] = "buyer"
+    await ticketdata_msg.edit(ticketdata)
+
     embed = discord.Embed(title="What's the CryptoCurrency type?", description="Select the coin that you're going to receive from your trader.", color=MAINCOLOR)
     embed.set_footer(text="Selected: ")
     await interaction.channel.send(embed=embed, view=CryptoType())
-    mycursor.close()
-    db.close()
 
     editedembed = interaction.message.embeds[0]
     editedembed.set_footer(text="Selected: Buyer")
     await interaction.message.edit(embed=editedembed)
+
+def find_between( s, first, last ):
+  try:
+    start = s.index( first ) + len( first )
+    end = s.index( last, start )
+    return s[start:end]
+  except ValueError:
+      return ""
+
+@bot.command()
+async def test1(ctx):
+  if ctx.author.id == 358594990982561792:
+    embad = discord.Embed(title="Do you want to skip the transaction?", description="Clicking \"Yes\" will skip the checking transaction part and contiune to the next step, which means that the bot won't check whether if the transaction has reached 1 confirmation or not and notify you about it. `(both traders are required to click this)`")
+    embad.add_field(name="Users", value="`None`", inline=False)
+    await ctx.send("Please wait until the transaction/s reaches 1 confirmation.", embed=embad, view=SkipTx())
+
+class SkipTx(discord.ui.View):
+  def __init__(self):
+    super().__init__(timeout=None)
+  @discord.ui.button(row=0, label="Yes", style=discord.ButtonStyle.green, custom_id="yesskiptx", disabled=False)
+  async def button_callback1(self, button, interaction):
+    
+    currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
+    dbchannel_id = int(currentticket[0].content.split("||")[1])
+    dbchannel = bot.get_channel(dbchannel_id)
+    ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+    ticketdata = ast.literal_eval(ticketdata_msg.content)
+
+    trader_ids = []
+    trader_ids.append(int(ticketdata['trader_seller_id']))
+    trader_ids.append(int(ticketdata['trader_receiver_id']))
+
+    if interaction.user.id not in trader_ids:
+      await interaction.response.defer()
+      return
+
+    await interaction.response.defer()
+
+    msg_embed = interaction.message.embeds[0]
+    field = msg_embed.fields[0]
+    agreed_users = None
+    if field.value == "`None`":
+      msg_embed.fields[0].value = f"{interaction.user.mention} has agreed on skipping this part."
+      await interaction.message.edit(embed=msg_embed)
+      return
+
+    if agreed_users == None:
+      msglist = field.value.splitlines(True)
+      if len(msglist) == 1:
+        signed_user_id = int(find_between(msglist[0], "<@", ">"))
+        if signed_user_id == interaction.user.id:
+          return
+
+        for child in self.children:
+          child.disabled = True
+
+        newmsg = f"\n{interaction.user.mention} has agreed on skipping this part."
+        msg_embed.fields[0].value = msg_embed.fields[0].value + newmsg
+        await interaction.message.edit(embed=msg_embed, view=self)
+        ticketdata['skip_tx'] = "Yes"
+        await ticketdata_msg.edit(ticketdata)
+        await interaction.channel.send(f"<@{ticketdata['trader_receiver_id']}> You may give your trader the promised items/money.\n\n<@{ticketdata['trader_seller_id']}> Once your trader gives you your stuff, use the `$confirm` command to let them withdraw their crypto.")
 
 class CryptoType(discord.ui.View):
   def __init__(self):
@@ -2558,19 +2552,17 @@ class CryptoType(discord.ui.View):
 
     await interaction.response.defer()
 
-    db = mysql.connector.connect(
-      host="remotemysql.com",
-      user="uDNB0NiyRu",
-      passwd="AAxYedadAw",
-      database="uDNB0NiyRu")
-    mycursor = db.cursor()
+    currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
+    dbchannel_id = int(currentticket[0].content.split("||")[1])
+    dbchannel = bot.get_channel(dbchannel_id)
+    ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+    ticketdata = ast.literal_eval(ticketdata_msg.content)
 
-    mycursor.execute(f"UPDATE autocrypto_tickets_info SET crypto_type=%s WHERE channel_id=%s", ("BTC", interaction.channel.id))
-    db.commit()
+    ticketdata['crypto_type'] = "BTC"
+    await ticketdata_msg.edit(ticketdata)
+
     embed = discord.Embed(title="How much is the deal in USD?", description="Reply with numbers.", color=MAINCOLOR)
     await interaction.channel.send(embed=embed)
-    mycursor.close()
-    db.close()
 
     editedembed = interaction.message.embeds[0]
     editedembed.set_footer(text="Selected: BTC")
