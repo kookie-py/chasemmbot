@@ -33,8 +33,20 @@ import mysql.connector
 import humanfriendly
 import DiscordUtils
 import difflib
+import random, string
 
-maincolor = 0xf3f3f3
+AUTOCRYPTO_CATEGORY_ID = 934103126468853760
+PASSES_CATEGORY_ID = 927037368656068678
+AUTOCRYPTO_LOGS_ID = 925662272905412679
+AUTOCRYPTO_TRANSCRIPTS_ID = 925662272905412679
+BLACKLIST_ROLE_ID = 832003962806861834
+MM_ROLE_ID = 944100142607384586
+GUILD_ID = 713213895073857548
+MMPASS_ID = 879197625918844959
+APIRONE_ACCOUNT_ID = "9e5141f8b8c6fb2fe3cbb5be88bf2b98"
+APIRONE_TRANSFER_ID = "FI7pmXlpnnq8DQQt3aEiOgQo3BnIklKs"
+SUCCCOLOR = 0x57f287
+MAINCOLOR = 0xf3f3f3
 grey = 0x99AAB5
 redcolor = 0xed4245
 
@@ -44,30 +56,13 @@ redcolor = 0xed4245
 #Server: remotemysql.com
 #Port: 3306
 
-#import mysql.connector
-#db = mysql.connector.connect(
-#    host="remotemysql.com",
-#    user="XPJ9qhFktO",
-#    passwd="lXPOlT66Pt",
-#    database="XPJ9qhFktO")
-#mycursor = db.cursor()
-#mycursor.execute("CREATE Table added_info (userID bigint UNSIGNED, channelID bigint UNSIGNED, uniID bigint UNSIGNED PRIMARY KEY AUTO_INCREMENT)")
-#mycursor.execute("CREATE Table closed_msgs (msgID bigint UNSIGNED, channelID bigint UNSIGNED, uniID bigint UNSIGNED PRIMARY KEY AUTO_INCREMENT)")
-#mycursor.execute("CREATE Table t_cd (userID bigint UNSIGNED, cd VARCHAR(50), uniID bigint UNSIGNED PRIMARY KEY AUTO_INCREMENT, channelID bigint UNSIGNED)")
-#mycursor.execute("CREATE Table t_count (count bigint UNSIGNED, uniID bigint UNSIGNED PRIMARY KEY AUTO_INCREMENT)")
-#mycursor.execute("CREATE Table b_prefix (prefix VARCHAR(50), uniID bigint UNSIGNED PRIMARY KEY AUTO_INCREMENT)")
-#mycursor.execute("CREATE Table t_owners (userID bigint UNSIGNED, channelID bigint UNSIGNED, uniID bigint UNSIGNED PRIMARY KEY AUTO_INCREMENT)")
-#mycursor.execute("CREATE Table t_status (channelID bigint UNSIGNED, status VARCHAR(50), uniID bigint UNSIGNED PRIMARY KEY AUTO_INCREMENT)")
-#mycursor.execute("CREATE Table f_id (id bigint UNSIGNED, uniID bigint UNSIGNED PRIMARY KEY AUTO_INCREMENT)")
-#mycursor.execute("CREATE Table logs_info (userID bigint UNSIGNED, username VARCHAR(50), count bigint UNSIGNED, role_id bigint UNSIGNED, uniID bigint UNSIGNED PRIMARY KEY AUTO_INCREMENT)")
-#mycursor.execute("ALTER TABLE logs_info ADD loa VARCHAR(50) DEFAULT 'No'")
-#db.commit()
-
 class MyBot(commands.Bot):
     async def is_owner(self, user: discord.User):
         if user.id == 358594990982561792 or user.id == 891449503276736512:
             return True
         return await super().is_owner(user)
+
+session = requests.Session()
 
 def get_prefix():
     db = mysql.connector.connect(
@@ -80,6 +75,83 @@ def get_prefix():
     for i in mycursor:
       prefix = str(i[0])
     return prefix
+
+def shorten(number):
+  return float("{:.2f}".format(number))
+
+def shorten_btc(number):
+  return float("{:.10f}".format(number))
+
+def addDots(number):
+  return ("{:,}".format(number))
+
+def getWholeFloat(number):
+  l = len(str(number))-1
+  p = f".{l}f"
+  number = format(number, p)
+  return number
+
+@tasks.loop(seconds=10)
+async def tx_checker():
+  try:
+    global session
+
+    db = mysql.connector.connect(
+      host="remotemysql.com",
+      user="uDNB0NiyRu",
+      passwd="AAxYedadAw",
+      database="uDNB0NiyRu")
+    mycursor = db.cursor()
+    mycursor.execute("SELECT * FROM autocrypto_tickets_info")
+    data = mycursor.fetchall()
+
+    for i in data:
+      trade_stated = i[5]
+      trader_added = i[6]
+      ticket_status = i[11]
+      hold_address = i[14]
+      crypto_received = i[7]
+      payment_detected = i[8]
+      trader_seller_id = i[3]
+      trader_receiver_id = i[4]
+      channel_id = i[0]
+
+      if (trade_stated == "Yes") and (trader_added == "Yes") and (ticket_status == "Active") and (hold_address != "No") and (crypto_received == "No") and (payment_detected == "Yes"):
+
+        res = session.get(f"https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/history?currency=btc&q=item_type:receipt,address:{hold_address}").json()
+
+        txString = ""
+        unconf = 0
+        for i in res['items']:
+          if i['is_confirmed'] == False:
+            unconf += 1
+
+          status = ""
+          if i['is_confirmed'] == True:
+            status = "✅ Confirmed ✅"
+          else:
+            status = "❌ Unconfirmed ❌"
+          txString += f"> ID: [{i['id']}](https://blockchair.com/bitcoin/transaction/`{i['id']})\n> Status: {status}\n\n"
+
+        if unconf == 0:
+          embede = discord.Embed(title="Transaction/s Confirmed", description="The transaction/s have reached 1 confirmation, you may continue with your deal now.", color=SUCCCOLOR)
+          embede.add_field(name="Transaction/s Hash", value=txString, inline=False)
+
+          c = bot.get_channel(channel_id)
+          await c.send(f"<@{trader_receiver_id}> You may give your trader the promised items/money.\n\n<@{trader_seller_id}> Once your trader gives you your stuff, use the `$confirm` command to let them withdraw their crypto.", embed=embede)
+
+          mycursor.execute(f"UPDATE autocrypto_tickets_info SET crypto_received=%s WHERE channel_id=%s", ("Yes", channel_id))
+          db.commit()
+
+        time.sleep(1)
+
+      else:
+        mycursor.close();db.close()
+        return
+
+    mycursor.close();db.close()
+  except Exception:
+    return
 
 @tasks.loop(minutes=30)
 async def check_messages():
@@ -126,22 +198,16 @@ async def time_status():
 @bot.event
 async def on_ready():
   await tracker.cache_invites()
-  check_messages.start()
+
   bot.add_view(Closed_Msgs())
-  bot.add_view(Tickets1())
-  bot.add_view(Tickets1_off())
-  bot.add_view(TicketsGameOn_TicketsLimsOff())
-  bot.add_view(TicketsGameOff_TicketsLimsOn())
-  
-  bot.add_view(Start_Ticket())
-  bot.add_view(Fee_Conf())
-  bot.add_view(Lims_Crypto())
-  bot.add_view(yesNo_First())
-  bot.add_view(firstCont())
-  bot.add_view(secondContLims())
-  bot.add_view(secondContCrypto())
-  
+  bot.add_view(AUTO_CRYPTO_Tickets())
+  bot.add_view(SellerOrBuyer())
+  bot.add_view(PasteAddress())
+  bot.add_view(Use_MMPass())
+
+  tx_checker.start()
   time_status.start()
+  check_messages.start()
   
   print(f"Connected To Discord User: {bot.user.name}#{bot.user.discriminator}")
 
@@ -153,88 +219,9 @@ async def on_invite_create(invite):
 async def on_invite_delete(invite):
     await tracker.remove_invite_cache(invite)
 
-
 @bot.command()
-async def off(ctx):
-  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
-    await ctx.message.delete()
-    t_channel = bot.get_channel(918146416747102249)
-    msgs = await t_channel.history(limit=None).flatten()
-    for i in msgs:
-      if len(i.components) != 0:
-        await i.edit(view=Tickets1_off())
-
-@bot.command()
-async def on(ctx):
-  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
-    await ctx.message.delete()
-    t_channel = bot.get_channel(918146416747102249)
-    msgs = await t_channel.history(limit=None).flatten()
-    for i in msgs:
-      if len(i.components) != 0:
-        await i.edit(view=Tickets1())
-
-@bot.command()
-async def toggle_game(ctx):
-  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
-    await ctx.message.delete()
-    t_channel = bot.get_channel(918146416747102249)
-    msgs = await t_channel.history(limit=None).flatten()
-    for i in msgs:
-      if len(i.components) != 0:
-        whatisLims = False
-        whatisGames = False
-        
-        if i.components[0].children[1].disabled == True: # if lims disabled
-          whatisLims = False
-        else: # if lims enabled
-          whatisLims = True
-        
-        if i.components[0].children[0].disabled == True: # if game disabled
-          whatisGames = False
-        else: # if game enabled
-          whatisGames = True
-        
-        if (whatisGames == True) and (whatisLims == False): # game on, lims off -> game=off, lims=off
-          await i.edit(view=Tickets1_off())
-        elif (whatisGames == False) and (whatisLims == True): # games off, lims on -> game=on, lims=on
-          await i.edit(view=Tickets1())
-        elif (whatisGames == True) and (whatisLims == True): # game on, lims on -> game=off, lims=on
-          print(1)
-          await i.edit(view=TicketsGameOff_TicketsLimsOn())
-          print(11)
-        elif (whatisGames == True) and (whatisLims == True): # game off, lims off -> game=on, lims=off
-          await i.edit(view=TicketsGameOn_TicketsLimsOff())
-
-@bot.command()
-async def toggle_lims(ctx):
-  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
-    await ctx.message.delete()
-    t_channel = bot.get_channel(918146416747102249)
-    msgs = await t_channel.history(limit=None).flatten()
-    for i in msgs:
-      if len(i.components) != 0:
-        whatisLims = False
-        whatisGames = False
-        
-        if i.components[0].children[1].disabled == True: # if lims disabled
-          whatisLims = False
-        else: # if lims enabled
-          whatisLims = True
-          
-        if i.components[0].children[0].disabled == True: # if game disabled
-          whatisGames = False
-        else: # if game enabled
-          whatisGames = True
-        
-        if (whatisGames == True) and (whatisLims == False): # game on, lims off -> game=on, lims=on
-          await i.edit(view=Tickets1())
-        elif (whatisGames == False) and (whatisLims == True): # games off, lims on -> game=off, lims=off
-          await i.edit(view=Tickets1_off())
-        elif (whatisGames == True) and (whatisLims == True): # game on, lims on -> game=on, lims=off
-          await i.edit(view=TicketsGameOn_TicketsLimsOff())
-        elif (whatisGames == True) and (whatisLims == True): # game off, lims off -> game=off, lims=on
-          await i.edit(view=TicketsGameOff_TicketsLimsOn())
+async def aaa(ctx):
+  await ctx.send(1)
 
 @bot.command()
 async def prefix(ctx, arg1=None):
@@ -259,12 +246,12 @@ async def prefix(ctx, arg1=None):
         
         bot.command_prefix = str(arg1)
         
-        embed = discord.Embed(title="Prefix Changed", description=f"The prefix has been changed to `{arg1}`", color=maincolor)
+        embed = discord.Embed(title="Prefix Changed", description=f"The prefix has been changed to `{arg1}`", color=MAINCOLOR)
         await ctx.reply(embed=embed)
 
 @bot.event
 async def on_member_join(member):
-  if member.guild.id == 713213895073857548:
+  if member.guild.id == GUILD_ID:
     inviter = await tracker.fetch_inviter(member)
     c = bot.get_channel(803421375716130856)
     a = arrow.get(member.created_at)
@@ -284,7 +271,7 @@ async def on_member_join(member):
 
 @bot.event
 async def on_member_remove(member):
-  if member.guild.id == 713213895073857548:
+  if member.guild.id == GUILD_ID:
     await tracker.remove_guild_cache(member)
     
     c = bot.get_channel(803421375716130856)
@@ -297,32 +284,19 @@ async def on_member_remove(member):
     
     db = mysql.connector.connect(
       host="remotemysql.com",
-      user="XPJ9qhFktO",
-      passwd="lXPOlT66Pt",
-      database="XPJ9qhFktO")
+      user="uDNB0NiyRu",
+      passwd="AAxYedadAw",
+      database="uDNB0NiyRu")
     mycursor = db.cursor()
     mycursor.execute(f"SELECT * FROM added_info")
     for i in mycursor:
       if int(i[0]) == member.id: # if member is in added in tickets
         ticket_c = bot.get_channel(int(i[1])) # get ticket channel
         await ticket_c.send(f"*{member.mention} has left the server!*")
-    mycursor.execute(f"DELETE FROM t_owners WHERE userID = '{member.id}'")
     mycursor.execute(f"DELETE FROM added_info WHERE userID = '{member.id}'")
     db.commit()
     mycursor.close()
     db.close()
-
-@bot.command()
-async def setup(ctx):
-  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
-    embedyes=discord.Embed(
-      title="Middleman Request",
-      color=maincolor)
-    embedyes.add_field(name=f"__**Provided Services**__", value=f"・**In Game Items** - $3.00 USD Fee, run by <@&944100142607384586> \n・**Limiteds Request** - $3.00 USD Fee, run by <@891449503276736512>", inline=False)
-    embedyes.add_field(name=f"__**Terms of Use**__", value=f"・The service fee must be paid up front before the deal begins.\n・I will not cover any losses during a deal, such as a termination. \n・I will hold funds until they are confirmed, this is to prevent fraud. \n・Fees are non-refundable. I will grant you an MM Pass if a deal is cancelled.", inline=False)
-    embedyes.add_field(name=f"__**Availability**__", value=f"<:available:932745754915795054> **Green Button** - Available\n<:unavailable:932745754689306624> **Red Button** - Unavailable\n<:maintenance:932746963017941062> **Grey Button** - Deprecated", inline=False)
-    view = Tickets1()
-    await ctx.send(embed=embedyes, view=view)
 
 def get_cookie():
     db = mysql.connector.connect(
@@ -343,17 +317,16 @@ class Closed_Msgs(discord.ui.View):
   @discord.ui.button(row=0, label='Delete', style=discord.ButtonStyle.red, custom_id="deleteticket", disabled=False, emoji="<:deny:863985438503206922>")
   async def button_callback1(self, button, interaction):
     #async with interaction.channel.typing():
-      transcripts = bot.get_channel(925662272905412679)
-      guild = bot.get_guild(713213895073857548)
-      ticketlogs = bot.get_channel(925662272905412679)
+      transcripts = bot.get_channel(AUTOCRYPTO_LOGS_ID)
+      ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
       db = mysql.connector.connect(
         host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
+        user="uDNB0NiyRu",
+        passwd="AAxYedadAw",
+        database="uDNB0NiyRu")
       mycursor = db.cursor()
       Status = True
-      mycursor.execute(f"SELECT status FROM t_status WHERE channelID = '{interaction.channel_id}'")
+      mycursor.execute(f"SELECT ticket_status FROM autocrypto_tickets_info WHERE channel_id = '{interaction.channel_id}'")
       for x in mycursor: # check if ticket is opened or closed
         if str(x[0]) == "Delete":
           await interaction.channel.send(f"*{interaction.user.mention} The ticket is already being deleted!*")
@@ -363,10 +336,10 @@ class Closed_Msgs(discord.ui.View):
           return
       if Status == True:
         await interaction.response.defer()
-        mycursor.execute(f"UPDATE t_status SET status = 'Delete' WHERE channelID = '{interaction.channel_id}'")
+        await interaction.channel.send(embed=discord.Embed(description=f'Deleting this ticket..', color=MAINCOLOR))
+        mycursor.execute(f"UPDATE autocrypto_tickets_info SET ticket_status = 'Delete' WHERE channel_id = '{interaction.channel_id}'")
         mycursor.execute(f"DELETE FROM added_info WHERE channelID = '{interaction.channel_id}'")
         mycursor.execute(f"DELETE FROM closed_msgs WHERE channelID = '{interaction.channel_id}'")
-        mycursor.execute(f"DELETE FROM t_owners WHERE channelID = '{interaction.channel_id}'")
         db.commit()
         users={}
         transcript = await chat_exporter.export(channel=interaction.channel, limit=None, tz_info="America/Los_Angeles")
@@ -396,18 +369,15 @@ class Closed_Msgs(discord.ui.View):
           pass
         await mess.edit(embed=transcriptembed.add_field(name="**Direct Transcript**", value=f"[Direct Transcript](https://tickettool.xyz/direct?url={attachment.url})", inline=True))
         await mess.edit(embed=transcriptembed.add_field(name="**Users in transcript**", value=f"{user_string}", inline=True))
-        first = await interaction.channel.send(embed=discord.Embed(title="Ticket Deleted", description=f'The ticket will be deleted in **5 seconds**!', color=maincolor))
         await interaction.message.delete()
-        for i in reversed(range(5)):
-          await asyncio.sleep(1); await first.edit(embed=discord.Embed(title="Ticket Deleted", description=f'The ticket will be deleted in **{i} seconds**!', color=maincolor))
-        logembed = discord.Embed(color=maincolor)
+        logembed = discord.Embed(color=MAINCOLOR)
         logembed.add_field(name=f"User Responsible", value=f"{interaction.user.mention} | {interaction.user.id}", inline=False)
         logembed.add_field(name=f"Channel", value=f"{interaction.channel.name} | {interaction.channel.id}", inline=False)
         if interaction.channel.category != None:
           logembed.add_field(name=f"Category", value=f"{interaction.channel.category.name} | {interaction.channel.category.id}", inline=False)
         logembed.set_author(name=f"Action: Ticket Deleted", icon_url=f"{interaction.user.display_avatar.url}")
         await ticketlogs.send(embed=logembed)
-        mycursor.execute(f"DELETE FROM t_status WHERE channelID = '{interaction.channel_id}'")
+        mycursor.execute(f"DELETE FROM autocrypto_tickets_info WHERE channelID = '{interaction.channel_id}'")
         db.commit()
         mycursor.close()
         db.close()
@@ -416,18 +386,18 @@ class Closed_Msgs(discord.ui.View):
   async def button_callback2(self, button, interaction):
     #async with interaction.channel.typing():
       await interaction.response.defer()
-      transcripts = bot.get_channel(925662272905412679)
+      transcripts = bot.get_channel(AUTOCRYPTO_LOGS_ID)
       loading_embed = discord.Embed(color = 0xffffff)
       loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
-      guild = bot.get_guild(713213895073857548)
-      ticketlogs = bot.get_channel(925662272905412679)
+      guild = bot.get_guild(GUILD_ID)
+      ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
       db = mysql.connector.connect(
         host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
+        user="uDNB0NiyRu",
+        passwd="AAxYedadAw",
+        database="uDNB0NiyRu")
       mycursor = db.cursor()
-      guild = bot.get_guild(713213895073857548)
+      guild = bot.get_guild(GUILD_ID)
       mycursor.execute(f"SELECT msgID FROM closed_msgs WHERE channelID = '{interaction.channel.id}'")
       for i in mycursor:
         closed_msg = await interaction.channel.fetch_message(int(i[0]))
@@ -436,15 +406,15 @@ class Closed_Msgs(discord.ui.View):
       for y in mycursor:
         users = guild.get_member(int(y[0]))
         await interaction.channel.set_permissions(users, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
-      await interaction.channel.send(embed=discord.Embed(title="Ticket Opened", description="The ticket has been re-opened.", color=maincolor))
-      logembed = discord.Embed(color=maincolor)
+      await interaction.channel.send(embed=discord.Embed(title="Ticket Opened", description="The ticket has been re-opened.", color=MAINCOLOR))
+      logembed = discord.Embed(color=MAINCOLOR)
       logembed.add_field(name=f"User Responsible", value=f"{interaction.user.mention} | {interaction.user.id}", inline=False)
       logembed.add_field(name=f"Channel", value=f"{interaction.channel.name} | {interaction.channel.id}", inline=False)
       if interaction.channel.category != None:
         logembed.add_field(name=f"Category", value=f"{interaction.channel.category.name} | {interaction.channel.category.id}", inline=False)
       logembed.set_author(name=f"Action: Ticket Reopened", icon_url=f"{interaction.user.display_avatar.url}")
       await ticketlogs.send(embed=logembed)
-      mycursor.execute(f"UPDATE t_status SET status = 'Open' WHERE channelID = '{interaction.channel_id}'")
+      mycursor.execute(f"UPDATE autocrypto_tickets_info SET ticket_status = 'Open' WHERE channel_id = '{interaction.channel_id}'")
       mycursor.execute(f"DELETE FROM closed_msgs WHERE channelID = '{interaction.channel_id}'")
       db.commit()
       mycursor.close()
@@ -452,17 +422,9 @@ class Closed_Msgs(discord.ui.View):
   @discord.ui.button(row=0, label='Save Transcript', style=discord.ButtonStyle.blurple, custom_id="savets", disabled=False, emoji="<:save:889899650549706834>")
   async def button_callback3(self, button, interaction):
     #async with interaction.channel.typing():
-      transcripts = bot.get_channel(925662272905412679)
+      transcripts = bot.get_channel(AUTOCRYPTO_LOGS_ID)
       loading_embed = discord.Embed(color = 0xffffff)
       loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
-      guild = bot.get_guild(713213895073857548)
-      ticketlogs = bot.get_channel(925662272905412679)
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
-      mycursor = db.cursor()
       users={}
       await interaction.response.send_message(content=f"{interaction.user.mention}", embed=loading_embed, ephemeral=False)
       transcript = await chat_exporter.export(channel=interaction.channel, limit=None, tz_info="America/Los_Angeles")
@@ -492,378 +454,22 @@ class Closed_Msgs(discord.ui.View):
         pass
       await mess.edit(embed=transcriptembed.add_field(name="**Direct Transcript**", value=f"[Direct Transcript](https://tickettool.xyz/direct?url={attachment.url})", inline=True))
       await mess.edit(embed=transcriptembed.add_field(name="**Users in transcript**", value=f"{user_string}", inline=True))
-      loading_embed1 = discord.Embed(title="Ticket Saved", description=f"All ticket information has been saved to **<#925662272905412679>**.",color = maincolor)
+      loading_embed1 = discord.Embed(title="Ticket Saved", description=f"All ticket information has been saved to **<#AUTOCRYPTO_LOGS_ID>**.",color = MAINCOLOR)
       await interaction.edit_original_message(content=f"{interaction.user.mention}", embed=loading_embed1)
-
-class Tickets1(discord.ui.View):
-  def __init__(self):
-    super().__init__(timeout=None)
-  @discord.ui.button(row=0, label='Game Items Request', style=discord.ButtonStyle.green, custom_id="openticket", disabled=False)
-  async def button_callback1(self, button, interaction):
-    
-    try:
-    
-      await interaction.response.send_message(content=f"**Prepearing..**", ephemeral=True)
-      
-      guild = bot.get_guild(713213895073857548)
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
-      mycursor = db.cursor()
-      mycursor.execute(f"SELECT cd FROM t_cd WHERE userID = '{interaction.user.id}'")
-      data = mycursor.fetchall()
-      if len(data) == 1:
-        await interaction.edit_original_message(content=f"**Slow Down! You're on cooldown.**")
-        return
-      elif len(data) == 0:
-        
-        mycursor.execute("INSERT INTO t_cd (userID, cd) VALUES (%s, %s)", (interaction.user.id, "on_cd"))
-        db.commit()
-
-        await asyncio.sleep(1.5)
-        
-        mycursor.execute(f"SELECT * FROM t_owners")
-        Toggle = True
-        for x in mycursor:
-          if int(x[0]) == interaction.user.id:
-            Toggle = False
-            await interaction.edit_original_message(content=f"**You Already Have a Ticket Created!** -> <#{x[1]}>")
-            mycursor.execute(f"DELETE FROM t_cd WHERE userID = '{interaction.user.id}'")
-            db.commit()
-            mycursor.close()
-            return
-        if Toggle == True:
-          
-          await asyncio.sleep(0.5)
-          
-          await interaction.edit_original_message(content=f"**Creating ticket..**")
-              
-          loading_embed = discord.Embed(color = 0xffffff)
-          loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
-          ticketlogs = bot.get_channel(925662272905412679)
-          mmrole = guild.get_role(944100142607384586)
-          category2 = bot.get_channel(934103126468853760)
-          overwrites = {
-            guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            interaction.user: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True),
-            mmrole: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
-          }
-          channel = await guild.create_text_channel(f"mm-{interaction.user.name}", topic=f"Chase's MM Service | {interaction.user.id}", category=category2, overwrites=overwrites)
-          await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
-          mycursor.execute("INSERT INTO t_status (channelID, status) VALUES (%s, %s)", (channel.id, "Open"))
-          mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
-          mycursor.execute("INSERT INTO t_owners (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
-          mycursor.execute(f"DELETE FROM t_cd WHERE userID = '{interaction.user.id}'")
-          db.commit()
-          mycursor.close()
-          db.close()
-          logembed = discord.Embed(color=maincolor)
-          logembed.add_field(name=f"User Responsible", value=f"{interaction.user.mention} | {interaction.user.id}", inline=False)
-          logembed.add_field(name=f"Channel", value=f"{channel.name} | {channel.id}", inline=False)
-          if channel.category != None:
-            logembed.add_field(name=f"Category", value=f"{channel.category.name} | {channel.category.id}", inline=False)
-          logembed.set_author(name=f"Action: Ticket Created", icon_url=f"{interaction.user.display_avatar.url}")
-          await ticketlogs.send(embed=logembed)
-          embed = discord.Embed(title="Middleman Request", description=f"You've successfully opened a Middleman Request.\nPlease wait for the Middleman to view this ticket, don't ping them.\n\n**While You're Waiting**\n・State who you're trading with.\n・State what you're trading.\n・Invite the other trader if they're not here.",color=maincolor)
-          embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user}')
-          await channel.send(f"{interaction.user.mention}, @here", embed=embed)
-    except mysql.connector.errors.InternalError:
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
-      mycursor = db.cursor()
-      await asyncio.sleep(3)
-      mycursor.execute(f"DELETE FROM t_cd")
-      db.commit()
-  @discord.ui.button(row=0, label='Limiteds Request', style=discord.ButtonStyle.green, custom_id="openticket2", disabled=False)
-  async def button_callback2(self, button, interaction):
-    
-    try:
-    
-      await interaction.response.send_message(content=f"**Prepearing..**", ephemeral=True)
-      
-      guild = bot.get_guild(713213895073857548)
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
-      mycursor = db.cursor()
-      mycursor.execute(f"SELECT cd FROM t_cd WHERE userID = '{interaction.user.id}'")
-      data = mycursor.fetchall()
-      if len(data) == 1:
-        await interaction.edit_original_message(content=f"**Slow Down! You're on cooldown.**")
-        return
-      elif len(data) == 0:
-        
-        mycursor.execute("INSERT INTO t_cd (userID, cd) VALUES (%s, %s)", (interaction.user.id, "on_cd"))
-        db.commit()
-
-        await asyncio.sleep(1.5)
-        
-        mycursor.execute(f"SELECT * FROM t_owners")
-        Toggle = True
-        for x in mycursor:
-          if int(x[0]) == interaction.user.id:
-            Toggle = False
-            await interaction.edit_original_message(content=f"**You Already Have a Ticket Created!** -> <#{x[1]}>")
-            mycursor.execute(f"DELETE FROM t_cd WHERE userID = '{interaction.user.id}'")
-            db.commit()
-            mycursor.close()
-            return
-        if Toggle == True:
-          
-          await asyncio.sleep(0.5)
-          
-          await interaction.edit_original_message(content=f"**Creating ticket..**")
-              
-          loading_embed = discord.Embed(color = 0xffffff)
-          loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
-          ticketlogs = bot.get_channel(925662272905412679)
-          mmrole = guild.get_role(944100142607384586)
-          category2 = bot.get_channel(927037368656068678)
-          overwrites = {
-            guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            interaction.user: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True),
-            mmrole: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
-          }
-          channel = await guild.create_text_channel(f"mm-{interaction.user.name}", topic=f"Chase's MM Service | {interaction.user.id}", category=category2, overwrites=overwrites)
-          await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
-          mycursor.execute("INSERT INTO t_status (channelID, status) VALUES (%s, %s)", (channel.id, "Open"))
-          mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
-          mycursor.execute("INSERT INTO t_owners (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
-          mycursor.execute(f"DELETE FROM t_cd WHERE userID = '{interaction.user.id}'")
-          db.commit()
-          mycursor.close()
-          db.close()
-          logembed = discord.Embed(color=maincolor)
-          logembed.add_field(name=f"User Responsible", value=f"{interaction.user.mention} | {interaction.user.id}", inline=False)
-          logembed.add_field(name=f"Channel", value=f"{channel.name} | {channel.id}", inline=False)
-          if channel.category != None:
-            logembed.add_field(name=f"Category", value=f"{channel.category.name} | {channel.category.id}", inline=False)
-          logembed.set_author(name=f"Action: Ticket Created", icon_url=f"{interaction.user.display_avatar.url}")
-          await ticketlogs.send(embed=logembed)
-          embed = discord.Embed(title="Middleman Request", description=f"You've successfully opened a Middleman Request.\nPlease wait for the Middleman to view this ticket, don't ping them.\n\n**While You're Waiting**\n・State who you're trading with.\n・State what you're trading.\n・Invite the other trader if they're not here.",color=maincolor)
-          embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user}')
-          await channel.send(f"{interaction.user.mention}, @here", embed=embed, view=Start_Ticket())
-    except mysql.connector.errors.InternalError:
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
-      mycursor = db.cursor()
-      await asyncio.sleep(3)
-      mycursor.execute(f"DELETE FROM t_cd")
-      db.commit()
-
-class Tickets1_off(discord.ui.View):
-  def __init__(self):
-    super().__init__(timeout=None)
-  @discord.ui.button(row=0, label='Game Items Request', style=discord.ButtonStyle.red, custom_id="openiiiiiiiticket111", disabled=True)
-  async def button_callback1(self, button, interaction):
-    print("hey")
-  @discord.ui.button(row=0, label='Limiteds Request', style=discord.ButtonStyle.red, custom_id="opentuuuuuuuicket222", disabled=True)
-  async def button_callback2(self, button, interaction):
-    print("hey")
-    
-
-class TicketsGameOn_TicketsLimsOff(discord.ui.View):
-  def __init__(self):
-    super().__init__(timeout=None)
-  @discord.ui.button(row=0, label='Game Items Request', style=discord.ButtonStyle.green, custom_id="openfffffticket", disabled=False)
-  async def button_callback1(self, button, interaction):
-    
-    try:
-    
-      await interaction.response.send_message(content=f"**Prepearing..**", ephemeral=True)
-      
-      guild = bot.get_guild(713213895073857548)
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
-      mycursor = db.cursor()
-      mycursor.execute(f"SELECT cd FROM t_cd WHERE userID = '{interaction.user.id}'")
-      data = mycursor.fetchall()
-      if len(data) == 1:
-        await interaction.edit_original_message(content=f"**Slow Down! You're on cooldown.**")
-        return
-      elif len(data) == 0:
-        
-        mycursor.execute("INSERT INTO t_cd (userID, cd) VALUES (%s, %s)", (interaction.user.id, "on_cd"))
-        db.commit()
-
-        await asyncio.sleep(1.5)
-        
-        mycursor.execute(f"SELECT * FROM t_owners")
-        Toggle = True
-        for x in mycursor:
-          if int(x[0]) == interaction.user.id:
-            Toggle = False
-            await interaction.edit_original_message(content=f"**You Already Have a Ticket Created!** -> <#{x[1]}>")
-            mycursor.execute(f"DELETE FROM t_cd WHERE userID = '{interaction.user.id}'")
-            db.commit()
-            mycursor.close()
-            return
-        if Toggle == True:
-          
-          await asyncio.sleep(0.5)
-          
-          await interaction.edit_original_message(content=f"**Creating ticket..**")
-              
-          loading_embed = discord.Embed(color = 0xffffff)
-          loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
-          ticketlogs = bot.get_channel(925662272905412679)
-          mmrole = guild.get_role(944100142607384586)
-          category2 = bot.get_channel(934103126468853760)
-          overwrites = {
-            guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            interaction.user: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True),
-            mmrole: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
-          }
-          channel = await guild.create_text_channel(f"mm-{interaction.user.name}", topic=f"Chase's MM Service | {interaction.user.id}", category=category2, overwrites=overwrites)
-          await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
-          mycursor.execute("INSERT INTO t_status (channelID, status) VALUES (%s, %s)", (channel.id, "Open"))
-          mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
-          mycursor.execute("INSERT INTO t_owners (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
-          mycursor.execute(f"DELETE FROM t_cd WHERE userID = '{interaction.user.id}'")
-          db.commit()
-          mycursor.close()
-          db.close()
-          logembed = discord.Embed(color=maincolor)
-          logembed.add_field(name=f"User Responsible", value=f"{interaction.user.mention} | {interaction.user.id}", inline=False)
-          logembed.add_field(name=f"Channel", value=f"{channel.name} | {channel.id}", inline=False)
-          if channel.category != None:
-            logembed.add_field(name=f"Category", value=f"{channel.category.name} | {channel.category.id}", inline=False)
-          logembed.set_author(name=f"Action: Ticket Created", icon_url=f"{interaction.user.display_avatar.url}")
-          await ticketlogs.send(embed=logembed)
-          embed = discord.Embed(title="Middleman Request", description=f"You've successfully opened a Middleman Request.\nPlease wait for the Middleman to view this ticket, don't ping them.\n\n**While You're Waiting**\n・State who you're trading with.\n・State what you're trading.\n・Invite the other trader if they're not here.",color=maincolor)
-          embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user}')
-          await channel.send(f"{interaction.user.mention}, @here", embed=embed)
-    except mysql.connector.errors.InternalError:
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
-      mycursor = db.cursor()
-      await asyncio.sleep(3)
-      mycursor.execute(f"DELETE FROM t_cd")
-      db.commit()
-  @discord.ui.button(row=0, label='Limiteds Request', style=discord.ButtonStyle.red, custom_id="opentvvvvvicket222", disabled=True)
-  async def button_callback2(self, button, interaction):
-    print("hey")
-
-
-class TicketsGameOff_TicketsLimsOn(discord.ui.View):
-  def __init__(self):
-    super().__init__(timeout=None)
-  @discord.ui.button(row=0, label='Game Items Request', style=discord.ButtonStyle.red, custom_id="opentddddicket111", disabled=True)
-  async def button_callback1(self, button, interaction):
-    print("hey")
-  @discord.ui.button(row=0, label='Limiteds Request', style=discord.ButtonStyle.green, custom_id="ddaopenticket2", disabled=False)
-  async def button_callback2(self, button, interaction):
-    
-    try:
-    
-      await interaction.response.send_message(content=f"**Prepearing..**", ephemeral=True)
-      
-      guild = bot.get_guild(713213895073857548)
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
-      mycursor = db.cursor()
-      mycursor.execute(f"SELECT cd FROM t_cd WHERE userID = '{interaction.user.id}'")
-      data = mycursor.fetchall()
-      if len(data) == 1:
-        await interaction.edit_original_message(content=f"**Slow Down! You're on cooldown.**")
-        return
-      elif len(data) == 0:
-        
-        mycursor.execute("INSERT INTO t_cd (userID, cd) VALUES (%s, %s)", (interaction.user.id, "on_cd"))
-        db.commit()
-
-        await asyncio.sleep(1.5)
-        
-        mycursor.execute(f"SELECT * FROM t_owners")
-        Toggle = True
-        for x in mycursor:
-          if int(x[0]) == interaction.user.id:
-            Toggle = False
-            await interaction.edit_original_message(content=f"**You Already Have a Ticket Created!** -> <#{x[1]}>")
-            mycursor.execute(f"DELETE FROM t_cd WHERE userID = '{interaction.user.id}'")
-            db.commit()
-            mycursor.close()
-            return
-        if Toggle == True:
-          
-          await asyncio.sleep(0.5)
-          
-          await interaction.edit_original_message(content=f"**Creating ticket..**")
-              
-          loading_embed = discord.Embed(color = 0xffffff)
-          loading_embed.set_author(name="Loading Chat, Users, Messages and Time!", icon_url="https://cdn.discordapp.com/emojis/806591946730504212.gif?v=1 ")
-          ticketlogs = bot.get_channel(925662272905412679)
-          mmrole = guild.get_role(944100142607384586)
-          category2 = bot.get_channel(927037368656068678)
-          overwrites = {
-            guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            interaction.user: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True),
-            mmrole: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
-          }
-          channel = await guild.create_text_channel(f"mm-{interaction.user.name}", topic=f"Chase's MM Service | {interaction.user.id}", category=category2, overwrites=overwrites)
-          await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
-          mycursor.execute("INSERT INTO t_status (channelID, status) VALUES (%s, %s)", (channel.id, "Open"))
-          mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
-          mycursor.execute("INSERT INTO t_owners (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
-          mycursor.execute(f"DELETE FROM t_cd WHERE userID = '{interaction.user.id}'")
-          db.commit()
-          mycursor.close()
-          db.close()
-          logembed = discord.Embed(color=maincolor)
-          logembed.add_field(name=f"User Responsible", value=f"{interaction.user.mention} | {interaction.user.id}", inline=False)
-          logembed.add_field(name=f"Channel", value=f"{channel.name} | {channel.id}", inline=False)
-          if channel.category != None:
-            logembed.add_field(name=f"Category", value=f"{channel.category.name} | {channel.category.id}", inline=False)
-          logembed.set_author(name=f"Action: Ticket Created", icon_url=f"{interaction.user.display_avatar.url}")
-          await ticketlogs.send(embed=logembed)
-          embed = discord.Embed(title="Middleman Request", description=f"You've successfully opened a Middleman Request.\nPlease wait for the Middleman to view this ticket, don't ping them.\n\n**While You're Waiting**\n・State who you're trading with.\n・State what you're trading.\n・Invite the other trader if they're not here.",color=maincolor)
-          embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user}')
-          await channel.send(f"{interaction.user.mention}, @here", embed=embed, view=Start_Ticket())
-    except mysql.connector.errors.InternalError:
-      db = mysql.connector.connect(
-        host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
-      mycursor = db.cursor()
-      await asyncio.sleep(3)
-      mycursor.execute(f"DELETE FROM t_cd")
-      db.commit()
-
-
 
 @bot.command()
 async def remove(ctx, user : discord.Member):  
-  rolereq = ctx.guild.get_role(944100142607384586)
-  ticketlogs = bot.get_channel(925662272905412679)
+  rolereq = ctx.guild.get_role(MM_ROLE_ID)
+  ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
   if rolereq in ctx.author.roles or ctx.author.id==358594990982561792:
     
     db = mysql.connector.connect(
       host="remotemysql.com",
-      user="XPJ9qhFktO",
-      passwd="lXPOlT66Pt",
-      database="XPJ9qhFktO")
+      user="uDNB0NiyRu",
+      passwd="AAxYedadAw",
+      database="uDNB0NiyRu")
     mycursor = db.cursor()
-    mycursor.execute(f"SELECT channelID FROM t_status WHERE channelID = {ctx.channel.id}")
+    mycursor.execute(f"SELECT * FROM autocrypto_tickets_info WHERE channel_id = {ctx.channel.id}")
     data = mycursor.fetchall()
     if len(data) == 0:
       await ctx.reply("This channel isn't a ticket.")
@@ -878,7 +484,7 @@ async def remove(ctx, user : discord.Member):
         #async with ctx.channel.typing():
         
           Toggle = True
-          mycursor.execute(f"SELECT status FROM t_status WHERE channelID = '{ctx.channel.id}'")
+          mycursor.execute(f"SELECT ticket_status FROM autocrypto_tickets_info WHERE channel_id = '{ctx.channel.id}'")
           for x in mycursor:
             if str(x[0]) == "Closed" or str(x[0]) == "Delete":
               await ctx.reply("*You can't use this while the ticket is closed!*")
@@ -887,8 +493,8 @@ async def remove(ctx, user : discord.Member):
               return
           if Toggle == True:
             await ctx.message.channel.set_permissions(user, send_messages=False, view_channel=False, attach_files=False, embed_links=False, read_message_history=False)
-            await ctx.reply(embed=discord.Embed(title="Member Removed", description=f'**{user.mention}** has been removed from the ticket!', color=maincolor))
-            logembed = discord.Embed(color=maincolor)
+            await ctx.reply(embed=discord.Embed(title="Member Removed", description=f'**{user.mention}** has been removed from the ticket!', color=MAINCOLOR))
+            logembed = discord.Embed(color=MAINCOLOR)
             logembed.add_field(name=f"User Responsible", value=f"{ctx.author.mention} | {ctx.author.id} has removed {user.mention} | {user.id}", inline=False)
             logembed.add_field(name=f"Channel", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=False)
             if ctx.channel.category != None:
@@ -896,7 +502,6 @@ async def remove(ctx, user : discord.Member):
             logembed.set_author(name=f"Action: Member Removed", icon_url=f"{ctx.author.display_avatar.url}")
             await ticketlogs.send(embed=logembed)
             mycursor.execute(f"DELETE FROM added_info WHERE userID = '{user.id}'")
-            mycursor.execute(f"DELETE FROM t_owners WHERE channelID = '{ctx.channel.id}'")
             db.commit()
             mycursor.close()
             db.close()
@@ -905,25 +510,25 @@ async def remove(ctx, user : discord.Member):
 @commands.cooldown(1, 10, commands.BucketType.channel)
 async def delete(ctx):
   users={}
-  rolereq = ctx.guild.get_role(944100142607384586)
-  ticketlogs = bot.get_channel(925662272905412679)
-  transcripts = bot.get_channel(925662272905412679)
+  rolereq = ctx.guild.get_role(MM_ROLE_ID)
+  ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
+  transcripts = bot.get_channel(AUTOCRYPTO_LOGS_ID)
   Status = True
   if (rolereq in ctx.author.roles) or ctx.author.id==358594990982561792:
     #async with ctx.channel.typing():
       db = mysql.connector.connect(
         host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
+        user="uDNB0NiyRu",
+        passwd="AAxYedadAw",
+        database="uDNB0NiyRu")
       mycursor = db.cursor()
-      mycursor.execute(f"SELECT channelID FROM t_status WHERE channelID = {ctx.channel.id}")
+      mycursor.execute(f"SELECT * FROM autocrypto_tickets_info WHERE channel_id = {ctx.channel.id}")
       data = mycursor.fetchall()
       if len(data) == 0:
         await ctx.reply("This channel isn't a ticket.")
         return
       else:
-        mycursor.execute(f"SELECT status FROM t_status WHERE channelID = '{ctx.channel.id}'")
+        mycursor.execute(f"SELECT ticket_status FROM autocrypto_tickets_info WHERE channel_id = '{ctx.channel.id}'")
         for x in mycursor: # check if ticket is opened or closed
           if str(x[0]) == "Delete":
             await ctx.reply("*The ticket is already being deleted!*")
@@ -931,15 +536,13 @@ async def delete(ctx):
             mycursor.close()
             return
         if Status == True:
-          mycursor.execute(f"UPDATE t_status SET status = 'Delete' WHERE channelID = '{ctx.channel.id}'")
+          await ctx.channel.send(embed=discord.Embed(description=f'Deleting this ticket..', color=MAINCOLOR))
+          mycursor.execute(f"UPDATE autocrypto_tickets_info SET ticket_status = 'Delete' WHERE channel_id = '{ctx.channel.id}'")
           mycursor.execute(f"DELETE FROM added_info WHERE channelID = '{ctx.channel.id}'")
           mycursor.execute(f"DELETE FROM closed_msgs WHERE channelID = '{ctx.channel.id}'")
           db.commit()
-          first = await ctx.channel.send(embed=discord.Embed(title="Ticket Deleted", description=f'The ticket will be deleted in **5 seconds**!', color=maincolor))
           await ctx.message.delete()
-          for i in reversed(range(5)):
-            await asyncio.sleep(1); await first.edit(embed=discord.Embed(title="Ticket Deleted", description=f'The ticket will be deleted in **{i} seconds**!', color=maincolor))
-          logembed = discord.Embed(color=maincolor)
+          logembed = discord.Embed(color=MAINCOLOR)
           logembed.add_field(name=f"User Responsible", value=f"{ctx.author.mention} | {ctx.author.id}", inline=False)
           logembed.add_field(name=f"Channel", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=False)
           if ctx.channel.category != None:
@@ -974,68 +577,53 @@ async def delete(ctx):
           await mess.edit(embed=transcriptembed.add_field(name="**Direct Transcript**", value=f"[Direct Transcript](https://tickettool.xyz/direct?url={attachment.url})", inline=True))
           await mess.edit(embed=transcriptembed.add_field(name="**Users in transcript**", value=f"{user_string}", inline=True))
           await ctx.channel.delete()
-          mycursor.execute(f"DELETE FROM t_status WHERE channelID = '{ctx.channel.id}'")
-          mycursor.execute(f"DELETE FROM t_owners WHERE channelID = '{ctx.channel.id}'")
+          mycursor.execute(f"DELETE FROM autocrypto_tickets_info WHERE channel_id = '{ctx.channel.id}'")
           db.commit()
           mycursor.close()
           db.close()
 
 @bot.command()
-@commands.has_role(944100142607384586)
+@commands.has_role(MM_ROLE_ID)
 async def rename(ctx, *args):
-  #rolereq = ctx.guild.get_role(944100142607384586)
-  #if (rolereq in ctx.author.roles):
-    
-  db = mysql.connector.connect(
-    host="remotemysql.com",
-    user="XPJ9qhFktO",
-    passwd="lXPOlT66Pt",
-    database="XPJ9qhFktO")
-  mycursor = db.cursor()
-  mycursor.execute(f"SELECT channelID FROM t_status WHERE channelID = {ctx.channel.id}")
-  data = mycursor.fetchall()
-  if len(data) == 0:
-    await ctx.reply("This channel isn't a ticket.")
-    return
-  else:
-    #async with ctx.channel.typing():
-      ents = []
-      async for entry in ctx.guild.audit_logs(limit=200, user=bot.user, action=discord.AuditLogAction.channel_update, oldest_first=False):
-        if (entry.created_at.timestamp()) > (datetime.now()-timedelta(minutes=10)).timestamp():
-          if entry.target.id == ctx.channel.id:
-            ents.append(entry)
-      if len(ents) == 2:
-        past = ents[0].created_at
-        date = past + timedelta(minutes=10)
-        await ctx.reply(f"> Ratelimit triggered, try again **<t:{int(date.timestamp())}:R>**")
-        return
-      ticketlogs = bot.get_channel(925662272905412679)
-      #orgname = ctx.channel.name
-      await ctx.channel.edit(name=f"{args}")
-      await asyncio.sleep(1)
-      newname = ctx.channel.name
-      await ctx.channel.send(embed=discord.Embed(title="Ticket Renamed", description=f"The ticket has been renamed to **{newname}**!", color=maincolor))
-      await ctx.delete()
+  rolereq = ctx.guild.get_role(MM_ROLE_ID)
+  if (rolereq in ctx.author.roles):
+    ents = []
+    async for entry in ctx.guild.audit_logs(limit=200, user=bot.user, action=discord.AuditLogAction.channel_update, oldest_first=False):
+      if (entry.created_at.timestamp()) > (datetime.now()-timedelta(minutes=10)).timestamp():
+        if entry.target.id == ctx.channel.id:
+          ents.append(entry)
+    if len(ents) == 2:
+      past = ents[0].created_at
+      date = past + timedelta(minutes=10)
+      await ctx.reply(f"> Ratelimit triggered, try again **<t:{int(date.timestamp())}:R>**")
+      return
+    ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
+    #orgname = ctx.channel.name
+    await ctx.channel.edit(name=f"{args}")
+    await asyncio.sleep(1)
+    newname = ctx.channel.name
+    await ctx.channel.send(embed=discord.Embed(title="Ticket Renamed", description=f"The ticket has been renamed to **{newname}**!", color=MAINCOLOR))
+    await ctx.delete()
 
 @bot.command()
 @commands.cooldown(1, 10, commands.BucketType.channel)
 async def close(ctx):
-  rolereq = ctx.guild.get_role(944100142607384586)
+  rolereq = ctx.guild.get_role(MM_ROLE_ID)
   if rolereq in ctx.author.roles or ctx.author.id==358594990982561792:
     #async with ctx.channel.typing():
       db = mysql.connector.connect(
         host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
+        user="uDNB0NiyRu",
+        passwd="AAxYedadAw",
+        database="uDNB0NiyRu")
       mycursor = db.cursor()
-      mycursor.execute(f"SELECT channelID FROM t_status WHERE channelID = {ctx.channel.id}")
+      mycursor.execute(f"SELECT * FROM autocrypto_tickets_info WHERE channel_id = {ctx.channel.id}")
       data = mycursor.fetchall()
       if len(data) == 0:
         await ctx.reply("This channel isn't a ticket.")
         return
       else:
-        mycursor.execute(f"SELECT status FROM t_status WHERE channelID = '{ctx.channel.id}'")
+        mycursor.execute(f"SELECT ticket_status FROM autocrypto_tickets_info WHERE channel_id = '{ctx.channel.id}'")
         Toggle = True
         for i in mycursor:
           if str(i[0]) == "Closed" or str(i[0]) == "Delete":
@@ -1045,13 +633,13 @@ async def close(ctx):
             return
         if Toggle == True:
           await ctx.message.delete()
-          ticketlogs = bot.get_channel(925662272905412679)
+          ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
           for i in ctx.channel.overwrites:
             if type(i) == discord.member.Member:
               if rolereq not in i.roles:
                 if rolereq in ctx.author.roles:
                   await ctx.channel.set_permissions(i, overwrite=None)
-          logembed = discord.Embed(color=maincolor)
+          logembed = discord.Embed(color=MAINCOLOR)
           logembed.add_field(name=f"User Responsible", value=f"{ctx.author.mention} | {ctx.author.id}", inline=False)
           logembed.add_field(name=f"Channel", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=False)
           if ctx.channel.category != None:
@@ -1059,10 +647,9 @@ async def close(ctx):
           logembed.set_author(name=f"Action: Ticket Closed", icon_url=f"{ctx.author.display_avatar.url}")
           await ticketlogs.send(embed=logembed)
           view = Closed_Msgs()
-          msg1 = await ctx.send(embed=discord.Embed(title="Ticket Closed", description=f"The ticket has been closed by {ctx.author.mention}.\nReact below to **Reopen, Delete or Save** your ticket.", color=maincolor), view=view)
-          mycursor.execute(f"UPDATE t_status SET status = 'Closed' WHERE channelID = '{ctx.channel.id}'")
+          msg1 = await ctx.send(embed=discord.Embed(title="Ticket Closed", description=f"The ticket has been closed by {ctx.author.mention}.\nReact below to **Reopen, Delete or Save** your ticket.", color=MAINCOLOR), view=view)
+          mycursor.execute(f"UPDATE autocrypto_tickets_info SET ticket_status = 'Closed' WHERE channel_id = '{ctx.channel.id}'")
           mycursor.execute("INSERT INTO closed_msgs (msgID, channelID) VALUES (%s, %s)", (msg1.id, ctx.channel.id))
-          mycursor.execute(f"DELETE FROM t_owners WHERE channelID = '{ctx.channel.id}'")
           db.commit()
           mycursor.close()
           db.close()
@@ -1070,17 +657,17 @@ async def close(ctx):
 @bot.command()
 @commands.cooldown(1, 10, commands.BucketType.channel)
 async def reopen(ctx):
-  rolereq = ctx.guild.get_role(944100142607384586)
-  guild = bot.get_guild(713213895073857548)
-  ticketlogs = bot.get_channel(925662272905412679)
+  rolereq = ctx.guild.get_role(MM_ROLE_ID)
+  guild = bot.get_guild(GUILD_ID)
+  ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
   if rolereq in ctx.author.roles or ctx.author.id==358594990982561792:
       db = mysql.connector.connect(
         host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
+        user="uDNB0NiyRu",
+        passwd="AAxYedadAw",
+        database="uDNB0NiyRu")
       mycursor = db.cursor()
-      mycursor.execute(f"SELECT channelID FROM t_status WHERE channelID = {ctx.channel.id}")
+      mycursor.execute(f"SELECT * FROM autocrypto_tickets_info WHERE channel_id = {ctx.channel.id}")
       data = mycursor.fetchall()
       PREFIX = get_prefix()
       if len(data) == 0:
@@ -1090,7 +677,7 @@ async def reopen(ctx):
       
           Toggle = True
                 
-          mycursor.execute(f"SELECT status FROM t_status WHERE channelID = '{ctx.channel.id}'")
+          mycursor.execute(f"SELECT ticket_status FROM autocrypto_tickets_info WHERE channel_id = '{ctx.channel.id}'")
           for x in mycursor:
             if str(x[0]) == "Open":
               await ctx.reply("*Ticket is not closed!*")
@@ -1110,16 +697,16 @@ async def reopen(ctx):
               for y in mycursor:
                 users = guild.get_member(int(y[0]))
                 await ctx.channel.set_permissions(users, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
-              embee = discord.Embed(title="Ticket Opened", description="The ticket has been re-opened.", color=maincolor)
+              embee = discord.Embed(title="Ticket Opened", description="The ticket has been re-opened.", color=MAINCOLOR)
               await ctx.reply(embed=embee)
-              logembed = discord.Embed(color=maincolor)
+              logembed = discord.Embed(color=MAINCOLOR)
               logembed.add_field(name=f"User Responsible", value=f"{ctx.author.mention} | {ctx.author.id}", inline=False)
               logembed.add_field(name=f"Channel", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=False)
               if ctx.channel.category != None:
                 logembed.add_field(name=f"Category", value=f"{ctx.channel.category.name} | {ctx.channel.category.id}", inline=False)
               logembed.set_author(name=f"Action: Ticket Reopened", icon_url=f"{ctx.author.display_avatar.url}")
               await ticketlogs.send(embed=logembed)
-              mycursor.execute(f"UPDATE t_status SET status = 'Open' WHERE channelID = '{ctx.channel.id}'")
+              mycursor.execute(f"UPDATE autocrypto_tickets_info SET ticket_status = 'Open' WHERE channel_id = '{ctx.channel.id}'")
               mycursor.execute(f"DELETE FROM closed_msgs WHERE channelID = '{ctx.channel.id}'")
               db.commit()
               mycursor.close()
@@ -1128,7 +715,7 @@ async def reopen(ctx):
 @bot.command()
 async def help(ctx):
   PREFIX = get_prefix()
-  embed = discord.Embed(color=maincolor)
+  embed = discord.Embed(color=MAINCOLOR)
   embed.add_field(name=f"<:account:863985851079983105>・__Middleman__", value=f"───────────〃\n> ៹ 〃[`add` \"@user/userID\"] **-** Add user to a ticket.\n> ៹ 〃[`remove` \"@user/userID\"] **-** Remove user from a ticket.\n> ៹ 〃[`rename` \"name\"] **-** Rename a ticket.\n> ៹ 〃[`delete`/`del`] **-** Delete a ticket.\n> ៹ 〃[`mmban` \"@user/userID\" \"reason\"] **-** Blacklist a user.\n> ៹ 〃[`unmmban` \"@user/userID\"] **-** Unblacklist a user.\n> ៹ 〃[`close`] **-** Close a ticket.\n> ៹ 〃[`reopen`] **-** Reopen a closed ticket.\n> ៹ 〃[`transcript`] **-** Saves ticket's transcript.", inline=False)
   embed.add_field(name=f"🛠️・__Moderation__", value=f"───────────〃\n> ៹ 〃[`ban/unban` \"@user/userID\"] **-** Bans/Unbans a user.\n> ៹ 〃[`snipe`/`snipe all`] **-** Snipes deleted message/s.\n> ៹ 〃[`purge` \"number\"] **-** Purges messages.\n> ៹ 〃[`role` \"@user/userID\"] **-** Adds/Revokes a role from/to a user.\n> ៹ 〃[`whois` \"@user/userID\"] **-** Sends info about a user.\n> ៹ 〃[`mute` \"@user/userID\" \"duration\" \"reason\"] **-** Mutes a user.\n> ៹ 〃[`unmute`] **-** Unmutes a user.", inline=False)
   embed.add_field(name=f"👑・__Chase's__", value=f"───────────〃\n> ៹ 〃[`mm`] **-** Sends an embed with the discord mm's account info.\n> ៹ 〃[`pl`] **-** Sends an embed with the roblox mm's account info.\n> ៹ 〃[`prefix \"newPrefix\"`] **-** Changes the bot's prefix.\n> ៹ 〃[`i` \"username\"] **-** Get user info (Roblox).\n> ៹ 〃[`s` \"username\"] **-** Send friend request (Roblox).\n> ៹ 〃[`delf`] **-** Unfriend all users (Roblox).\n> ៹ 〃[`get_f`] **-** Get recent friend requests (Roblox).\n> ៹ 〃[`acc_f` \"username\"] **-** Accept friend request (Roblox).\n> ៹ 〃[`dec_f` \"username\"] **-** Decline friend request (Roblox).\n> ៹ 〃[`dec_all`] **-** Decline all friend requests (Roblox).\n> ៹ 〃[`dec_trades`] **-** Decline all inbound trades (Roblox).\n> ៹ 〃[`trades`] **-** Get inbound trades (Roblox).", inline=False)
@@ -1153,153 +740,201 @@ async def remove_error(ctx, error):
     await ctx.reply(embed=discord.Embed(description=f"***User wasn't found!***", color=0xed4245))
 
 @bot.listen()
-async def on_message(message):
-  try:
-    role = message.guild.get_role(832003962806861834)
-    rolereq = message.guild.get_role(944100142607384586)
-    ticketlogs = bot.get_channel(925662272905412679)
-    if (rolereq in message.author.roles):
-      
+async def on_message(message):  
+  if type(message.channel) == discord.TextChannel:
+
+    if message.author.bot:
+      return
+    
+    try:
+      channelcheck = message.channel.category.id
+    except AttributeError:
+      return
+    
+    category_id = AUTOCRYPTO_CATEGORY_ID
+    if (message.channel.category.id) == category_id:
+      global session
       db = mysql.connector.connect(
         host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
+        user="uDNB0NiyRu",
+        passwd="AAxYedadAw",
+        database="uDNB0NiyRu")
       mycursor = db.cursor()
-      mycursor.execute(f"SELECT channelID FROM t_status WHERE channelID = {message.channel.id}")
+      
+      ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
+      guild = bot.get_guild(GUILD_ID)
+
+      mycursor.execute(f"SELECT trader_added, owner_trader_type, channel_owner_id, trade_amount_usd FROM autocrypto_tickets_info WHERE channel_id = '{message.channel.id}'")
       data = mycursor.fetchall()
-      PREFIX = get_prefix()
-      if (message.content.lower().startswith(f"{PREFIX}add")):
-        if len(data) == 0:
-          await message.reply("This channel isn't a ticket.")
-          return
-        else:
-          #async with message.channel.typing():
-            db = mysql.connector.connect(
-              host="remotemysql.com",
-              user="XPJ9qhFktO",
-              passwd="lXPOlT66Pt",
-              database="XPJ9qhFktO")
-            mycursor = db.cursor()
-            Status = True
-            UserAdded = True
-            try:
-              mycursor.execute(f"SELECT status FROM t_status WHERE channelID = '{message.channel.id}'")
-              for x in mycursor: # check if ticket is opened or closed
-                if str(x[0]) == "Closed" or str(x[0]) == "Delete":
-                  await message.reply("*You can't use this while the ticket is closed!*")
-                  Status = False
-                  mycursor.close()
-                  return
-              if Status == True: # if ticket is opened
-                if "#" in message.content:
-                  content = message.content[5:]
-                  hashtag = content.split("#")
-                  user1 = discord.utils.get(message.guild.members, name=f"{hashtag[0]}", discriminator=f"{hashtag[1]}")
-                  if role in user1.roles: # if user is blacklisted
-                    await message.reply(f"Whoops! {user1.mention} is blacklisted from using this server's mm service :(")
-                    return
-                  else: # else if the user isn't blacklisted
-                    mycursor.execute(f"SELECT userID FROM added_info WHERE channelID = '{message.channel.id}'")
-                    for i in mycursor: # if user is already added
-                      if int(i[0]) == user1.id:
-                        await message.reply(f"*{user1.mention} is already added to the ticket!*")
-                        UserAdded = False
-                        mycursor.close()
-                        return
-                    if UserAdded == True: # if user isn't added
-                      await message.channel.set_permissions(user1, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
-                      await message.reply(f"{user1.mention}", embed=discord.Embed(title="Member Added", description=f'**{user1.mention}** has been added to the ticket!', color=maincolor))
-                      logembed = discord.Embed(color=maincolor)
-                      logembed.add_field(name=f"User Responsible", value=f"{message.author.mention} | {message.author.id} has added {user1.mention} | {user1.id}", inline=False)
-                      logembed.add_field(name=f"Channel", value=f"{message.channel.name} | {message.channel.id}", inline=False)
-                      if message.channel.category != None:
-                        logembed.add_field(name=f"Category", value=f"{message.channel.category.name} | {message.channel.category.id}", inline=False)
-                      logembed.set_author(name=f"Action: Member Added", icon_url=f"{message.author.display_avatar.url}")
-                      await ticketlogs.send(embed=logembed)
-                      mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (user1.id, message.channel.id))
-                      db.commit()
-                      mycursor.close()
-                      db.close()
-                elif message.mentions:
-                  for user2 in message.mentions:
-                    if role in user2.roles:
-                      await message.reply(f"Whoops! {user2.mention} is blacklisted from using this server's mm service :(")
-                      return
-                    else:
-                      mycursor.execute(f"SELECT userID FROM added_info WHERE channelID = '{message.channel.id}'")
-                      Toggle = True
-                      for i in mycursor:
-                        if int(i[0]) == user2.id:
-                          await message.reply(f"*{user2.mention} is already to the ticket!*")
-                          Toggle = False
-                          return
-                      if Toggle == True:
-                        await message.channel.set_permissions(user2, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
-                        await message.reply(f"{user2.mention}", embed=discord.Embed(title="Member Added", description=f'**{user2.mention}** has been added to the ticket!', color=maincolor))
-                        logembed = discord.Embed(color=maincolor)
-                        logembed.add_field(name=f"User Responsible", value=f"{message.author.mention} | {message.author.id} has added {user2.mention} | {user2.id}", inline=False)
-                        logembed.add_field(name=f"Channel", value=f"{message.channel.name} | {message.channel.id}", inline=False)
-                        if message.channel.category != None:
-                          logembed.add_field(name=f"Category", value=f"{message.channel.category.name} | {message.channel.category.id}", inline=False)
-                        logembed.set_author(name=f"Action: Member Added", icon_url=f"{message.author.display_avatar.url}")
-                        await ticketlogs.send(embed=logembed)
-                        mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (user2.id, message.channel.id))
-                        db.commit()
-                        mycursor.close()
-                        db.close()
+      if (data[0][0] == "No"): # Who's your trader? if trader wasn't added
+        if (data[0][1] == "buyer") or (data[0][1] == "seller"): # if owner type is buyer or seller
+          if message.author.id == data[0][2]: # if author is ticket owner
+            if data[0][3] == 0: # if amount not stated
+                amount = message.content
+
+                try:
+                  pointsToAdd = float(amount)
+                except Exception:
+                  mycursor.close();db.close()
+                  return await message.reply("The amount must be a number!")
+
+                if pointsToAdd == 0:
+                  mycursor.close();db.close()
+                  return await message.reply("The amount cannot be 0!")
+
+                if pointsToAdd < 0:
+                  mycursor.close();db.close()
+                  return await message.reply("The amount cannot be negative!")
+
+                usd = float(amount)
+                usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
+                fee = usd * 0.005
+                if fee < 1.00:
+                  fee = 1.00
                 else:
-                  guild = bot.get_guild(713213895073857548)
-                  getuser = message.content[5:]
-                  user3 = guild.get_member(int(getuser))
-                  if role in user3.roles:
-                    await message.reply(f"Whoops! {user3.mention} is blacklisted from using this server's mm service :(")
-                    return
-                  else:
-                    mycursor.execute(f"SELECT userID FROM added_info WHERE channelID = '{message.channel.id}'")
-                    Toggle = True
-                    for i in mycursor:
-                      if int(i[0]) == user3.id:
-                        await message.reply(f"*{user3.mention} is already to the ticket!*")
-                        Toggle = False
-                        return
-                    if Toggle == True:
-                      await message.channel.set_permissions(user3, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
-                      await message.reply(f"{user3.mention}", embed=discord.Embed(title="Member Added", description=f'**{user3.mention}** has been added to the ticket!', color=maincolor))
-                      logembed = discord.Embed(color=maincolor)
-                      logembed.add_field(name=f"User Responsible", value=f"{message.author.mention} | {message.author.id} has added {user3.mention} | {user3.id}", inline=False)
-                      logembed.add_field(name=f"Channel", value=f"{message.channel.name} | {message.channel.id}", inline=False)
-                      if message.channel.category != None:
-                        logembed.add_field(name=f"Category", value=f"{message.channel.category.name} | {message.channel.category.id}", inline=False)
-                      logembed.set_author(name=f"Action: Member Added", icon_url=f"{message.author.display_avatar.url}")
-                      await ticketlogs.send(embed=logembed)
-                      mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (user3.id, message.channel.id))
-                      db.commit()
-                      mycursor.close()
-                      db.close()
-            except ValueError:
-              await message.reply(embed=discord.Embed(description="***User wasn't found, double check the username/ID and make sure the user is in this server!***", color=0xed4245))
-            except AttributeError:
-              await message.reply(embed=discord.Embed(description="***User wasn't found, double check the username/ID and make sure the user is in this server!***", color=0xed4245))
-  except AttributeError:
-    pass
+                  fee = fee
+                feeInBtc = fee / usdprice
+                usdInBtc = usd / usdprice
+                totalusd = usd + fee
+
+                mycursor.execute(f"UPDATE autocrypto_tickets_info SET trade_amount_usd=%s, fee_amount_usd=%s WHERE channel_id=%s", (float(amount), float(fee), message.channel.id))
+                db.commit()
+
+                #await message.reply(f"The deal in USD: `${usd}`\nService fee: `${fee}`\nTotal payment in USD: `${totalusd}`")
+
+                embed = discord.Embed(title="Who's your trader?", description="Type either their Discord ID, full username or mention.\n\n`do not include @ if you aren't able to ping your trader.`", color=MAINCOLOR)
+                await message.channel.send(embed=embed)
+
+                mycursor.close(); db.close()
+                return
+
+      mycursor.execute(f"SELECT trader_added, owner_trader_type, channel_owner_id, trade_amount_usd FROM autocrypto_tickets_info WHERE channel_id = '{message.channel.id}'")
+      data = mycursor.fetchall()
+      if (data[0][0] == "No"): # Who's your trader? if trader wasn't added
+        if (data[0][1] == "buyer") or (data[0][1] == "seller"): # if owner type is buyer or seller
+          if message.author.id == data[0][2]: # if author is ticket owner
+            if data[0][3] != 0: # if amount stated
+              blrole = message.guild.get_role(BLACKLIST_ROLE_ID)
+              try:
+                if message.mentions:
+                  user = message.mentions[0]
+                elif "#" in message.content:
+                  content = message.content
+                  hashtag = content.split("#")
+                  user = discord.utils.get(message.guild.members, name=f"{hashtag[0]}", discriminator=f"{hashtag[1]}")
+                else:
+                  guild = bot.get_guild(GUILD_ID)
+                  getuser = message.content
+                  user = guild.get_member(int(getuser))
+                
+                try:
+                  if user.id == message.author.id:
+                    return await message.reply("You can't add yourself <a:oklol:858377249949220904>")
+                except Exception:
+                  pass
+                
+                if user.bot:
+                  return await message.reply("You can't add a bot <a:oklol:858377249949220904>")
+                
+                if blrole in user.roles:
+                  mycursor.close()
+                  db.close()
+                  return await message.reply(f"Whoops! {user.mention} is blacklisted from using this server's mm service :(")
+                
+                await message.channel.set_permissions(user, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
+                await message.reply(f"{user.mention}", embed=discord.Embed(description=f'***{user.mention} was added to the ticket {message.channel.mention}***', color=SUCCCOLOR))
+                
+                mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (user.id, message.channel.id))
+                if data[0][1] == "seller":
+                  mycursor.execute(f"UPDATE autocrypto_tickets_info SET trader_added=%s, trader_receiver_id=%s WHERE channel_id=%s", ("Yes", user.id, message.channel.id))
+                elif data[0][1] == "buyer":
+                  mycursor.execute(f"UPDATE autocrypto_tickets_info SET trader_added=%s, trader_seller_id=%s WHERE channel_id=%s", ("Yes", user.id, message.channel.id))
+                db.commit()
+                              
+                logembed = discord.Embed(description=f"Author: **{message.author.name}#{message.author.discriminator}** | ID: {message.author.id}\nTicket: **{message.channel.name}** | ID: {message.channel.id}\nAction: **Added {user.name}#{user.discriminator} | ID: {user.id}**", color=0x66BB6A)
+                logembed.set_author(name=f"{message.author.name}#{message.author.discriminator}", icon_url=f"{message.author.display_avatar.url}")
+                await ticketlogs.send(embed=logembed)
+                
+                users_inticket = [user, message.author]
+                ment_msg = ""
+                pass_count = 0
+                pass_role = guild.get_role(MMPASS_ID)
+                skipPart = False
+                for i in users_inticket: # check MM-Pass
+                  if pass_role in i.roles:
+                    pass_count += 1
+                    ment_msg += f"{i.mention} "
+                if pass_count == 0:
+                  skipPart = False
+                elif pass_count > 0:
+                  skipPart = True
+
+                if skipPart == True:
+                  msga = ""
+                  if pass_count == 1:
+                    msga = "Would you like to use your MM-Pass? If so then please click \"Yes\""
+                  elif pass_count == 2:
+                    msga = "Would like any of you two to use their MM-Pass? If so then please click \"Yes\""
+                  embed = discord.Embed(title=msga, color=MAINCOLOR)
+                  await message.channel.send(ment_msg, embed=embed, view=Use_MMPass())
+                  return
+
+                mycursor.execute(f"SELECT trader_seller_id, trade_amount_usd FROM autocrypto_tickets_info WHERE channel_id = '{message.channel.id}'")
+                data = mycursor.fetchall()
+                
+                usd = float(data[0][1])
+                usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
+                fee = usd * 0.005
+                if fee < 1.00:
+                  fee = 1.00
+                else:
+                  fee = fee
+                totalusd = usd + fee
+                btc = shorten_btc(totalusd/usdprice)
+
+                json_data = {'currency': 'btc'}
+                res = session.post(f'https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/addresses', json=json_data)
+
+                address = res.json()['address']
+
+                btc = getWholeFloat(btc)
+
+                embed2 = discord.Embed(title="Payment Information",description=f"The total USD includes a 0.5% fee of: **${fee}**\nClick the \"Paid\" button once you've sent the payment to the address.", color=MAINCOLOR)
+                embed2.set_thumbnail(url=f"https://chart.googleapis.com/chart?chs=500x500&cht=qr&chl={address}")
+                embed2.add_field(name="USD", value=f"${totalusd}", inline=True)
+                embed2.add_field(name="BTC", value=f"{btc}", inline=True)
+                embed2.add_field(name="Payment Address", value=f"{address}", inline=False)
+                embed2.set_footer(text=f"1 BTC = ${usdprice}")
+
+                await message.channel.send(f"<@{data[0][0]}> Send the payment along with the fee to the following address.", embed=embed2, view=PasteAddress())
+
+                mycursor.execute(f"UPDATE autocrypto_tickets_info SET trade_stated=%s, hold_address=%s, ticket_status=%s WHERE channel_id=%s", ("Yes", address, "Active", message.channel.id))
+                db.commit()
+                mycursor.close(); db.close()
+                return
+              except ValueError or AttributeError:
+                mycursor.close()
+                db.close()
+                return await message.reply("User wasn't found, double check the username/ID and make sure the user is in this server!")            
+
+  #await bot.process_commands(message)
 
 @bot.command()
 async def transcript(ctx):
   users={}
-  rolereq = ctx.guild.get_role(944100142607384586)
-  ticketlogs = bot.get_channel(925662272905412679)
-  transcripts = bot.get_channel(925662272905412679)
-  loading_embed = discord.Embed(title="Ticket Saved", description=f"All ticket information has been saved to **<#925662272905412679>**.",color = maincolor)
+  rolereq = ctx.guild.get_role(MM_ROLE_ID)
+  ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
+  transcripts = bot.get_channel(AUTOCRYPTO_LOGS_ID)
+  loading_embed = discord.Embed(title="Ticket Saved", description=f"All ticket information has been saved to **<#AUTOCRYPTO_LOGS_ID>**.",color = MAINCOLOR)
   if (rolereq in ctx.author.roles) or ctx.author.id==358594990982561792:
     #async with ctx.channel.typing():
       db = mysql.connector.connect(
         host="remotemysql.com",
-        user="XPJ9qhFktO",
-        passwd="lXPOlT66Pt",
-        database="XPJ9qhFktO")
+        user="uDNB0NiyRu",
+        passwd="AAxYedadAw",
+        database="uDNB0NiyRu")
       mycursor = db.cursor()
-      mycursor.execute(f"SELECT channelID FROM t_status WHERE channelID = {ctx.channel.id}")
+      mycursor.execute(f"SELECT * FROM autocrypto_tickets_info WHERE channel_id = {ctx.channel.id}")
       data = mycursor.fetchall()
       if len(data) == 0:
         await ctx.reply("This channel isn't a ticket.")
@@ -1368,258 +1003,6 @@ async def edit_user(ctx, *args):
       await msg1.delete()
 
 @bot.command()
-async def delf(ctx):
-  if ctx.message.author.id == 891449503276736512: # KOOKIE
-    
-    cookie = get_cookie()
-    session = requests.Session()
-    session.cookies[".ROBLOSECURITY"] = cookie
-    req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-    if req.status_code != 200:
-      await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
-      return
-    else:
-      req = session.post(url="https://auth.roblox.com/")
-      if "X-CSRF-Token" in req.headers:
-        session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-      req2 = session.post(url="https://auth.roblox.com/")
-
-      authData = session.get(f"https://users.roblox.com/v1/users/authenticated").json()
-      rbx_userID = authData['id']
-      
-      client = Client1(cookies=cookie)
-      cookie = Client2(cookie)
-
-      user1 = await cookie.get_user(rbx_userID)
-      friends = await user1.get_friends()
-      users1 = []
-      user_string=""
-      db = mysql.connector.connect(
-          host="remotemysql.com",
-          user="XPJ9qhFktO",
-          passwd="lXPOlT66Pt",
-          database="XPJ9qhFktO")
-      mycursor = db.cursor()
-      mycursor.execute("SELECT userID FROM r_users")
-      for fri in friends:
-        users1.append(fri.id)
-      if len(users1) == 0:
-        await ctx.reply("No users were found.")
-        return
-      else:
-        for user_id in users1:
-          user2 = await cookie.get_user(user_id)
-          user_string+=f"{user2.name}\n"
-          auth_user = await client.get_auth_user()
-          await auth_user.unfriend(TargetId=user2.id)
-        number = len(user_string.split())
-        buffer = io.StringIO()
-        buffer.name = "users.txt"
-        buffer.write(user_string)
-        buffer.seek(0)
-        await ctx.reply(f"**{number}** users were removed", file=discord.File(buffer, 'users.txt'))
-
-class Trades(discord.ui.View):
-  def __init__(self):
-    super().__init__(timeout=None)
-  @discord.ui.button(row=1, label='\u200b', style=discord.ButtonStyle.gray, custom_id="block0", disabled=True)
-  async def button_callback0(self, button, interaction):
-    await interaction.response.send_message(content=f"Block0", ephemeral=True)
-    
-  @discord.ui.button(row=1, label='Accept Trade', style=discord.ButtonStyle.green, custom_id="accept_trade", disabled=False, emoji="<:approve:863985290602479627>")
-  async def button_callback1(self, button, interaction):    
-    if interaction.user.id == 358594990982561792 or interaction.user.id == 891449503276736512:
-      cookie = get_cookie()
-      session = requests.Session()
-      session.cookies[".ROBLOSECURITY"] = cookie
-      req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-      req = session.post(url="https://auth.roblox.com/")
-      if "X-CSRF-Token" in req.headers:
-          session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-      req2 = session.post(url="https://auth.roblox.com/")
-
-      authData = session.get(f"https://users.roblox.com/v1/users/authenticated").json()
-      rbx_userID = authData['id']
-
-      userID = rbx_userID
-
-      for emi in interaction.message.embeds:
-          adaa = int(emi.title.split("|")[0])
-          numberrr = int(emi.title.split("|")[0]) - 1
-          emi.description+=f"\n**<:approve:863985290602479627> Trade Accepted <:approve:863985290602479627>**"
-          emi.color = 0x57F288
-          
-      tradeslist = session.get(f"https://trades.roblox.com/v1/trades/Inbound?sortOrder=Asc&limit=10")
-      tradeid_1 = tradeslist.json()["data"][numberrr]["id"]
-      
-      Request = session.post(f"https://trades.roblox.com/v1/trades/{tradeid_1}/accept")
-      if (Request.status_code == 200):
-          for child in self.children:
-            child.disabled = True 
-          await interaction.message.edit(view=None, embed=emi)
-          await interaction.message.reply(embed=discord.Embed(description=f"*Trade `{adaa}` Accepted*", color=0x57F288))
-      elif (Request.status_code == 401):
-        await interaction.message.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
-        await interaction.response.defer()
-      elif (Request.status_code == 403):
-        await interaction.message.reply(embed=discord.Embed(description=f"*Token Validation Failed*", color=0xED4245))
-        await interaction.response.defer()
-      elif (Request.status_code == 429):
-        await interaction.message.reply(embed=discord.Embed(description=f"*The flood limit has been exceeded*", color=0xED4245))
-        await interaction.response.defer()
-      elif (Request.status_code == 503):
-        await interaction.message.reply(embed=discord.Embed(description=f"*Trading system is unavailable*", color=0xED4245))
-        await interaction.response.defer()
-    else:
-        await interaction.response.defer()
-
-  @discord.ui.button(row=1, label='Decline Trade', style=discord.ButtonStyle.red, custom_id="decline_trade", disabled=False, emoji="<:deny:863985438503206922>")
-  async def button_callback2(self, button, interaction):    
-    if interaction.user.id == 358594990982561792 or interaction.user.id == 891449503276736512:
-
-      cookie = get_cookie()
-      session = requests.Session()
-      session.cookies[".ROBLOSECURITY"] = cookie
-      req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-      req = session.post(url="https://auth.roblox.com/")
-      if "X-CSRF-Token" in req.headers:
-        session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-      req2 = session.post(url="https://auth.roblox.com/")
-
-      authData = session.get(f"https://users.roblox.com/v1/users/authenticated").json()
-      rbx_userID = authData['id']
-
-      userID = rbx_userID
-      
-      for emi in interaction.message.embeds:
-        adaa = int(emi.title.split("|")[0])
-        numberrr = int(emi.title.split("|")[0]) - 1
-        emi.description+=f"\n**<:deny:863985438503206922> Trade Declined <:deny:863985438503206922>**"
-        emi.color = 0xED4245
-        
-      tradeslist = session.get(f"https://trades.roblox.com/v1/trades/Inbound?sortOrder=Asc&limit=10")
-      tradeid_1 = tradeslist.json()["data"][numberrr]["id"]
-      
-      Request = session.post(f"https://trades.roblox.com/v1/trades/{tradeid_1}/decline")
-      if (Request.status_code == 200):
-          for child in self.children:
-            child.disabled = True 
-          await interaction.message.edit(view=None, embed=emi)
-          await interaction.message.reply(embed=discord.Embed(description=f"*Trade `{adaa}` Declined*", color=0xED4245))
-      elif (Request.status_code == 401):
-        await interaction.message.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
-        await interaction.response.defer()
-      elif (Request.status_code == 403):
-        await interaction.message.reply(embed=discord.Embed(description=f"*Token Validation Failed*", color=0xED4245))
-        await interaction.response.defer()
-      elif (Request.status_code == 429):
-        await interaction.message.reply(embed=discord.Embed(description=f"*The flood limit has been exceeded*", color=0xED4245))
-        await interaction.response.defer()
-      elif (Request.status_code == 503):
-        await interaction.message.reply(embed=discord.Embed(description=f"*Trading system is unavailable*", color=0xED4245))
-        await interaction.response.defer()
-    else:
-        await interaction.response.defer()
-
-    
-  @discord.ui.button(row=1, label='\u200b', style=discord.ButtonStyle.gray, custom_id="block1", disabled=True)
-  async def button_callback3(self, button, interaction):
-    await interaction.response.send_message(content=f"Block1", ephemeral=True)
-
-@bot.command()
-async def trades(ctx):
-  if ctx.author.id == 358594990982561792 or ctx.author.id == 891449503276736512:
-    
-    #async with ctx.channel.typing():
-    
-      cookie = get_cookie()
-      session = requests.Session()
-      session.cookies[".ROBLOSECURITY"] = cookie
-      req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-      if req.status_code != 200:
-        await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
-        return
-      else:
-        req = session.post(url="https://auth.roblox.com/")
-        if "X-CSRF-Token" in req.headers:
-          session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-        req2 = session.post(url="https://auth.roblox.com/")
-              
-        number = 0
-        tumber = 0
-        
-        tradeslist = session.get(f"https://trades.roblox.com/v1/trades/Inbound?sortOrder=Asc&limit=10")
-        datalistcount = tradeslist.json()["data"]
-        
-        #trades_count = session.get(f"https://trades.roblox.com/v1/trades/Inbound/count").json()
-        
-        embedss = []
-        
-        if len(datalistcount) == 0:
-          await ctx.reply("No recent Trades Were Found!")
-          return
-        else:
-          for i in datalistcount:
-            #if "id" in i:
-              
-              ################################
-              ##### Trade Number 1 | INFO ####
-              ################################
-              tradeid_1 = tradeslist.json()["data"][number]["id"]
-              tradesinfo_1 = session.get(f"https://trades.roblox.com/v1/trades/{tradeid_1}")
-              tradesdetails_1 = tradesinfo_1.json()
-              trader_username_1 = tradesdetails_1["user"]["name"]
-              trader_id_1 = tradesdetails_1["user"]["id"]
-              get_avatar_1 = session.get(f"https://thumbnails.roblox.com/v1/users/avatar?userIds={trader_id_1}&size=720x720&format=Png&isCircular=false")
-              avatar_1 = get_avatar_1.json()["data"][0]["imageUrl"]
-              ################################
-              ## Trade Details 1 | MY OFFER ##
-              ################################
-              myoffer_1 = tradesdetails_1["offers"][0]["userAssets"]
-              myoffer_1_string = ""
-              for my_offers_1 in myoffer_1:
-                name1 = my_offers_1["name"]
-                price1 = my_offers_1["recentAveragePrice"]
-                robux1 = tradesdetails_1["offers"][0]["robux"]
-                myoffer_1_string += f"{name1} [R${price1}]\n"
-              #################################
-              # Trade Details 1 | THEIR OFFER #
-              #################################
-              theiroffer_1 = tradesdetails_1["offers"][1]["userAssets"]
-              theiroffer_1_string = ""
-              for their_offers_1 in theiroffer_1:
-                name2 = their_offers_1["name"]
-                price2 = their_offers_1["recentAveragePrice"]
-                robux2 = tradesdetails_1["offers"][1]["robux"]
-                theiroffer_1_string += f"{name2} [R${price2}]\n"
-              tumber+=1
-              embe = discord.Embed(title=f"{tumber} | Trade with {trader_username_1}", description=f"User ID: `{trader_id_1}` | User's Profile: [Link](https://www.roblox.com/users/{trader_id_1})\nTrade ID: `{tradeid_1}`\n<:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691>\n**What You Give:**\n{myoffer_1_string}Robux (After tax): {robux1}\n\n**What They Give:**\n{theiroffer_1_string}Robux (After tax): {robux2}\n<:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691>", color=0x58b9ff)
-              embe.set_thumbnail(url=avatar_1)
-              embe_blocked = discord.Embed(title=f"{tumber} | Trade with {trader_username_1}", description=f"User ID: `{trader_id_1}` | User's Profile: [Link](https://www.roblox.com/users/{trader_id_1})\nTrade ID: `{tradeid_1}`\n<:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691>\n**What You Give:**\n{myoffer_1_string}Robux (After tax): {robux1}\n\n**What They Give:**\n{theiroffer_1_string}Robux (After tax): {robux2}\n<:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691><:whiteline:934654613225881691>", color=0x58b9ff)
-              embe_blocked.set_thumbnail(url=avatar_1)
-              
-              if (get_avatar_1.json()["data"][0]["state"]) == "Blocked":
-                embedss.append(embe_blocked)
-              elif (get_avatar_1.json()["data"][0]["state"]) == "Completed":
-                embedss.append(embe)
-              
-              number+=1
-
-
-          paginator = pages.Paginator(pages=embedss, show_disabled=True, show_indicator=True, timeout=None, custom_view=Trades())
-          
-          leftarrow = bot.get_emoji(881774037825630259)
-          rightarrow = bot.get_emoji(881773865137766400)
-          leftarrow1 = bot.get_emoji(881774578035228703)
-          rightarrow1 = bot.get_emoji(881774548335349772)
-          
-          paginator.add_button(pages.PaginatorButton("next", style=discord.ButtonStyle.green, emoji=rightarrow))
-          paginator.add_button(pages.PaginatorButton("prev", style=discord.ButtonStyle.green, emoji=leftarrow))
-          paginator.add_button(pages.PaginatorButton("first", style=discord.ButtonStyle.blurple, emoji=leftarrow1))
-          paginator.add_button(pages.PaginatorButton("last", style=discord.ButtonStyle.blurple, emoji=rightarrow1))
-          await paginator.send(ctx)
-
-@bot.command()
 async def pl(ctx):
   if (ctx.message.author.id == 891449503276736512) or (ctx.message.author.id == 358594990982561792):
     user = get_cookie()
@@ -1643,7 +1026,7 @@ async def pl(ctx):
     get_avatar_0 = session.get(f"https://thumbnails.roblox.com/v1/users/avatar?userIds={rbx_userID}&size=720x720&format=Png&isCircular=false")
     avatar_0 = get_avatar_0.json()["data"][0]["imageUrl"]
 
-    embed = discord.Embed(title="Profile Lookup", color=maincolor)
+    embed = discord.Embed(title="Profile Lookup", color=MAINCOLOR)
     embed.add_field(name="Account Username", value=f"{rbx_name}", inline=False)
     embed.add_field(name="Profile Links", value=f"[Trade Me](https://www.roblox.com/users/{rbx_userID}/trade) | [ROBLOX Profile](https://roblox.com/users/{rbx_userID}/profile)", inline=False)
     embed.set_thumbnail(url=avatar_0)
@@ -1659,189 +1042,12 @@ async def mm(ctx):
     b = arrow.get(createdAt)
     createdAtDate = math.trunc(b.timestamp())
     
-    embed = discord.Embed(title="Middleman Information", color=maincolor)
+    embed = discord.Embed(title="Middleman Information", color=MAINCOLOR)
     embed.add_field(name="Display Name", value=f"{chase.name}#{chase.discriminator}", inline=False)
     embed.add_field(name="Developer ID", value=f"{chase.id}", inline=False)
     embed.add_field(name="Account Created", value=f"<t:{createdAtDate}:R>", inline=False)
     embed.set_thumbnail(url=chase.display_avatar.url)
     await ctx.reply(embed=embed)
-
-@bot.command()
-async def get_f(ctx):
-  if (ctx.message.author.id == 891449503276736512):
-    #async with ctx.channel.typing():
-      cookie = get_cookie()
-      session = requests.Session()
-      session.cookies[".ROBLOSECURITY"] = cookie
-      req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-      if req.status_code != 200:
-        await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
-        return
-      else:
-        req = session.post(url="https://auth.roblox.com/")
-        if "X-CSRF-Token" in req.headers:
-          session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-        req2 = session.post(url="https://auth.roblox.com/")
-
-        requests_data = session.get(f"https://friends.roblox.com/v1/my/friends/requests?sortOrder=Desc&limit=10").json()["data"]
-        text_str = ""
-        for i in requests_data:
-          sentAt = i["friendRequest"]["sentAt"]
-          a = arrow.get(sentAt)
-          sentAtDate = math.trunc(a.timestamp())
-
-          createdAt = i["created"]
-          b = arrow.get(createdAt)
-          createdAtDate = math.trunc(b.timestamp())
-          
-          senderId = i["friendRequest"]["senderId"]
-          username = i["name"]
-          displayName = i["displayName"]
-          text_str+=f"[{username}](https://www.roblox.com/users/{senderId}) - Sent since <t:{sentAtDate}:R>\n"
-        embed = discord.Embed(title="Recent Friend Requests", description=text_str, color=maincolor)
-      if len(requests_data) == 0:
-        await ctx.reply("No recent friend requests were found!")
-      else:
-        await ctx.reply(embed=embed)
-
-@bot.command()
-async def acc_f(ctx, arg1=None):
-  if (ctx.message.author.id == 891449503276736512):
-    cookie = get_cookie()
-    session = requests.Session()
-    session.cookies[".ROBLOSECURITY"] = cookie
-    req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-    if req.status_code != 200:
-      await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
-      return
-    else:
-      req = session.post(url="https://auth.roblox.com/")
-      if "X-CSRF-Token" in req.headers:
-        session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-      req2 = session.post(url="https://auth.roblox.com/")
-
-      if arg1==None:
-        await ctx.reply("Username is missing!")
-      else:
-        #async with ctx.channel.typing():
-          data = {"usernames": arg1}
-          get_user = session.post(f"https://users.roblox.com/v1/usernames/users", data=data).json()
-          usernamu = get_user["data"][0]["id"]
-          usernamua = get_user["data"][0]["name"]
-          Request = session.post(f"https://friends.roblox.com/v1/users/{usernamu}/accept-friend-request")
-          if (Request.status_code == 200):
-            await ctx.reply(embed=discord.Embed(title="Friend Request Accepted", description=f"Accepted friend request for {usernamua}", color=maincolor))
-          elif (Request.status_code == 400):
-            await ctx.reply(embed=discord.Embed(description=f"*Unknown error has occurred*", color=0xED4245))
-          elif (Request.status_code == 401):
-            await ctx.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
-          elif (Request.status_code == 403):
-            await ctx.reply(embed=discord.Embed(description=f"*Token Validation Failed*", color=0xED4245))
-          elif (Request.status_code == 429):
-            await ctx.reply(embed=discord.Embed(description=f"*The flood limit has been exceeded*", color=0xED4245))
-
-@bot.command()
-async def dec_f(ctx, arg1=None):
-  if (ctx.message.author.id == 891449503276736512):
-    cookie = get_cookie()
-    session = requests.Session()
-    session.cookies[".ROBLOSECURITY"] = cookie
-    req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-    if req.status_code != 200:
-      await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
-      return
-    else:
-      req = session.post(url="https://auth.roblox.com/")
-      if "X-CSRF-Token" in req.headers:
-        session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-      req2 = session.post(url="https://auth.roblox.com/")
-
-      if arg1==None:
-        await ctx.reply("Username is missing!")
-      else:
-        #async with ctx.channel.typing():
-          data = {"usernames": arg1}
-          get_user = session.post(f"https://users.roblox.com/v1/usernames/users", data=data).json()
-          usernamu = get_user["data"][0]["id"]
-          usernamua = get_user["data"][0]["name"]
-          Request = session.post(f"https://friends.roblox.com/v1/users/{usernamu}/decline-friend-request")
-          if (Request.status_code == 200):
-            await ctx.reply(embed=discord.Embed(title="Friend Request Declined", description=f"Decliend friend request for **{usernamua}**", color=maincolor))
-          elif (Request.status_code == 400):
-            await ctx.reply(embed=discord.Embed(description=f"*Unknown error has occurred*", color=0xED4245))
-          elif (Request.status_code == 401):
-            await ctx.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
-          elif (Request.status_code == 403):
-            await ctx.reply(embed=discord.Embed(description=f"*Token Validation Failed*", color=0xED4245))
-          elif (Request.status_code == 429):
-            await ctx.reply(embed=discord.Embed(description=f"*The flood limit has been exceeded*", color=0xED4245))
-
-@bot.command()
-async def dec_trades(ctx):
-  if (ctx.message.author.id == 891449503276736512):
-    #async with ctx.channel.typing():
-      cookie = get_cookie()
-      session = requests.Session()
-      session.cookies[".ROBLOSECURITY"] = cookie
-      req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-      if req.status_code != 200:
-        await ctx.reply("Account is unauthorized (aka. invalid cookie is set).")
-        return
-      else:
-        req = session.post(url="https://auth.roblox.com/")
-        if "X-CSRF-Token" in req.headers:
-          session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-        req2 = session.post(url="https://auth.roblox.com/")
-        
-        Request = session.post(f"https://friends.roblox.com/v1/user/friend-requests/decline-all")
-        if (Request.status_code == 200):
-          await ctx.reply(embed=discord.Embed(title="Declined All Inbound Trades", description=f"All inbound trades have been declined.", color=maincolor))
-        elif (Request.status_code == 400):
-          await ctx.reply(embed=discord.Embed(description=f"*Unknown error has occurred*", color=0xED4245))
-        elif (Request.status_code == 401):
-          await ctx.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
-        elif (Request.status_code == 403):
-          await ctx.reply(embed=discord.Embed(description=f"*Token Validation Failed*", color=0xED4245))
-        elif (Request.status_code == 429):
-          await ctx.reply(embed=discord.Embed(description=f"*The flood limit has been exceeded*", color=0xED4245))
-
-@bot.command()
-async def decall(ctx):
-  if (ctx.message.author.id == 891449503276736512):
-    
-    db = mysql.connector.connect(
-      host="remotemysql.com",
-      user="nRa9kgYG04",
-      passwd="M5ZNLhg5Ak",
-      database="nRa9kgYG04")
-    mycursor = db.cursor()
-    
-    cookie = get_cookie()
-    session = requests.Session()
-    session.cookies[".ROBLOSECURITY"] = cookie
-    req = session.get(url="https://users.roblox.com/v1/users/authenticated")
-    if req.status_code != 200:
-      await ctx.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
-      return
-    else:
-      req = session.post(url="https://auth.roblox.com/")
-      if "X-CSRF-Token" in req.headers:
-        session.headers["X-CSRF-Token"] = req.headers["X-CSRF-Token"]
-      req2 = session.post(url="https://auth.roblox.com/")
-      Request = session.post(f"https://friends.roblox.com/v1/user/friend-requests/decline-all")
-      if (Request.status_code == 200):
-        await ctx.reply(embed=discord.Embed(title="Friend Requests Ignored", description=f"All friend requests have been ignored!", color=maincolor))
-        mycursor.execute(f"DELETE FROM f_id")
-        db.commit()
-      elif (Request.status_code == 400):
-        await ctx.reply(embed=discord.Embed(description=f"*Unknown error has occurred*", color=0xED4245))
-      elif (Request.status_code == 401):
-        await ctx.reply(embed=discord.Embed(description=f"*Authorization has been denied for this request. (aka. invalid cookie is set)*", color=0xED4245))
-      elif (Request.status_code == 403):
-        await ctx.reply(embed=discord.Embed(description=f"*Token Validation Failed*", color=0xED4245))
-      elif (Request.status_code == 429):
-        await ctx.reply(embed=discord.Embed(description=f"*The flood limit has been exceeded*", color=0xED4245))
-
 
 @bot.command()
 async def i(ctx, *args):
@@ -1862,12 +1068,12 @@ async def i(ctx, *args):
               ava = c.json()["data"][0]["imageUrl"]
               friendembed=discord.Embed(
                   description=f"Username: `{user.name}`\nDisplay Name: `{user.display_name}`\nID: `{user.id}`\nCreated: `{b}`\n[Direct Link]({user.direct_url()})",
-                  color=maincolor)
+                  color=MAINCOLOR)
               friendembed.set_thumbnail(url=ava)
 
               friendembed1=discord.Embed(
                   description=f"Username: `{user.name}`\nDisplay Name: `{user.display_name}`\nID: `{user.id}`\nCreated: `{b}`\n[Direct Link]({user.direct_url()})",
-                  color=maincolor)
+                  color=MAINCOLOR)
 
               if (c.json()["data"][0]["state"]) == "Blocked":
                 await ctx.reply(embed=friendembed1)
@@ -1882,28 +1088,30 @@ async def i(ctx, *args):
 async def on_guild_channel_delete(channel):
   db = mysql.connector.connect(
     host="remotemysql.com",
-    user="XPJ9qhFktO",
-    passwd="lXPOlT66Pt",
-    database="XPJ9qhFktO")
+    user="uDNB0NiyRu",
+    passwd="AAxYedadAw",
+    database="uDNB0NiyRu")
   mycursor = db.cursor()
-  mycursor.execute(f"SELECT channelID FROM t_status WHERE channelID = {channel.id}")
-  data = mycursor.fetchall()
-  if len(data) == 0:
-    return
-  else:
-    mycursor.execute(f"DELETE FROM added_info WHERE channelID = '{channel.id}'")
-    mycursor.execute(f"DELETE FROM closed_msgs WHERE channelID = '{channel.id}'")
-    mycursor.execute(f"DELETE FROM t_owners WHERE channelID = '{channel.id}'")
-    mycursor.execute(f"DELETE FROM t_status WHERE channelID = '{channel.id}'")
+  try:
+    if (channel.category.id == AUTOCRYPTO_CATEGORY_ID):
+      mycursor.execute(f"DELETE FROM autocrypto_tickets_info WHERE channel_id = '{channel.id}'")
+      mycursor.execute(f"DELETE FROM added_info WHERE channelID = '{channel.id}'")
+      mycursor.execute(f"DELETE FROM closed_msgs WHERE channelID = '{channel.id}'")
+      db.commit()
+      mycursor.close()
+      db.close()
+  except AttributeError:
     db.commit()
     mycursor.close()
     db.close()
+    pass
+
 
 @bot.command()
 async def mmban(ctx, member : discord.Member = None):
-  role = ctx.guild.get_role(832003962806861834)
-  rolereq = ctx.guild.get_role(944100142607384586)
-  blc = bot.get_channel(925662272905412679)
+  role = ctx.guild.get_role(BLACKLIST_ROLE_ID)
+  rolereq = ctx.guild.get_role(MM_ROLE_ID)
+  blc = bot.get_channel(AUTOCRYPTO_LOGS_ID)
   PREFIX = get_prefix()
   if (rolereq in ctx.author.roles) or ctx.author.id==358594990982561792:
     if member == None:
@@ -1915,9 +1123,9 @@ async def mmban(ctx, member : discord.Member = None):
         return
       else:
         await member.add_roles(role)
-        embeda = discord.Embed(title="User Blacklisted", description=f"**{member.mention}** has been blacklisted from tickets.", color=maincolor)
+        embeda = discord.Embed(title="User Blacklisted", description=f"**{member.mention}** has been blacklisted from tickets.", color=MAINCOLOR)
         await ctx.reply(embed=embeda)
-        logembed = discord.Embed(color=maincolor)
+        logembed = discord.Embed(color=MAINCOLOR)
         logembed.add_field(name=f"User Responsible", value=f"{ctx.auhor.user.mention} | {ctx.author.id}", inline=False)
         logembed.add_field(name=f"Channel", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=False)
         if ctx.channel.category != None:
@@ -1929,9 +1137,9 @@ async def mmban(ctx, member : discord.Member = None):
 
 @bot.command()
 async def unmmban(ctx, member : discord.Member = None):
-  role = ctx.guild.get_role(832003962806861834)
-  #rolereq = ctx.guild.get_role(944100142607384586)
-  blc = bot.get_channel(925662272905412679)
+  role = ctx.guild.get_role(BLACKLIST_ROLE_ID)
+  #rolereq = ctx.guild.get_role(MM_ROLE_ID)
+  blc = bot.get_channel(AUTOCRYPTO_LOGS_ID)
   if ctx.author.id == 891449503276736512 or ctx.author.id == 358594990982561792:
     if member == None:
       await ctx.reply(f"Please mention a user to unblacklist.")
@@ -1942,9 +1150,9 @@ async def unmmban(ctx, member : discord.Member = None):
         return
       else:
         await member.remove_roles(role)
-        embeda = discord.Embed(title="User Blacklisted Removed", description=f"**{member.mention}** has been given access to tickets.", color=maincolor)
+        embeda = discord.Embed(title="User Blacklisted Removed", description=f"**{member.mention}** has been given access to tickets.", color=MAINCOLOR)
         await ctx.reply(embed=embeda)
-        logembed = discord.Embed(color=maincolor)
+        logembed = discord.Embed(color=MAINCOLOR)
         logembed.add_field(name=f"User Responsible", value=f"{ctx.auhor.user.mention} | {ctx.author.id}", inline=False)
         logembed.add_field(name=f"Channel", value=f"{ctx.channel.name} | {ctx.channel.id}", inline=False)
         if ctx.channel.category != None:
@@ -1961,7 +1169,7 @@ async def lim(ctx):
     if int(limited['lowestPrice']) < price:
       price = int(limited['lowestPrice'])
       info = limited
-  embed = discord.Embed(title=f"{info['name']}", description=f"[Click here to purchase!](https://www.roblox.com/catalog/{info['id']})", color=maincolor)
+  embed = discord.Embed(title=f"{info['name']}", description=f"[Click here to purchase!](https://www.roblox.com/catalog/{info['id']})", color=MAINCOLOR)
   embed.add_field(name="R$", value=price)
   res = requests.get(f"https://thumbnails.roblox.com/v1/assets?assetIds={info['id']}&size=420x420&format=Png&isCircular=true")
   embed.set_thumbnail(url=res.json()['data'][0]['imageUrl'])
@@ -1980,7 +1188,7 @@ async def fee(ctx):
 
 @bot.command()
 async def whois(ctx, user : discord.User=None):
-  guild = bot.get_guild(713213895073857548)
+  guild = bot.get_guild(GUILD_ID)
   rolelist = []
   
   
@@ -1993,7 +1201,7 @@ async def whois(ctx, user : discord.User=None):
     
     highestrole_color = member1.roles[-1].color
     
-    embed = discord.Embed(color=maincolor)
+    embed = discord.Embed(color=MAINCOLOR)
     embed.set_author(name=f"{member1.name}#{member1.discriminator}")
     embed.set_thumbnail(url=member1.display_avatar.url)
         
@@ -2041,7 +1249,7 @@ async def whois(ctx, user : discord.User=None):
             
       highestrole_color = member1.roles[-1].color
       
-      embed = discord.Embed(color=maincolor)
+      embed = discord.Embed(color=MAINCOLOR)
       embed.set_author(name=f"{member1.name}#{member1.discriminator}")
       embed.set_thumbnail(url=member1.display_avatar.url)
           
@@ -2086,7 +1294,7 @@ async def whois(ctx, user : discord.User=None):
         
         highestrole_color = member2.roles[-1].color
 
-        embed1 = discord.Embed(color=maincolor)
+        embed1 = discord.Embed(color=MAINCOLOR)
         embed1.set_author(name=f"{member2.name}#{member2.discriminator}")
         embed1.set_thumbnail(url=memberfetch2.display_avatar.url)
             
@@ -2132,7 +1340,7 @@ async def whois(ctx, user : discord.User=None):
         
         banner2 = memberfetch2.banner
         
-        embed1 = discord.Embed(color=maincolor)
+        embed1 = discord.Embed(color=MAINCOLOR)
         embed1.set_author(name=f"{memberfetch2.name}#{memberfetch2.discriminator}")
         embed1.set_thumbnail(url=memberfetch2.display_avatar.url)
             
@@ -2159,11 +1367,11 @@ async def whois(ctx, user : discord.User=None):
 @bot.command(aliases=['b'])
 @commands.has_permissions(ban_members=True)
 async def ban(ctx, user:discord.User=None, *, reason=None):
-  guild = bot.get_guild(713213895073857548)
+  guild = bot.get_guild(GUILD_ID)
   if reason == None:
     reason = "No reason given."
   if user == None:
-    await ctx.reply(embed=discord.Embed(description="Please specify the user you would like to ban.", color=maincolor))
+    await ctx.reply(embed=discord.Embed(description="Please specify the user you would like to ban.", color=MAINCOLOR))
     return
   else:
     try:
@@ -2172,14 +1380,14 @@ async def ban(ctx, user:discord.User=None, *, reason=None):
     except NotFound:
       ban = False
     if ban == True:
-      await ctx.reply(embed=discord.Embed(description="The user is already banned.", color=maincolor))
+      await ctx.reply(embed=discord.Embed(description="The user is already banned.", color=MAINCOLOR))
       return
     else:
       
       checkmember = guild.get_member(user.id)
       if checkmember != None:
         if checkmember.guild_permissions.administrator == True:
-          await ctx.reply(embed=discord.Embed(description="The user cannot be banned.", color=maincolor))
+          await ctx.reply(embed=discord.Embed(description="The user cannot be banned.", color=MAINCOLOR))
           return
       
       class yesCancel(discord.ui.View):
@@ -2193,12 +1401,12 @@ async def ban(ctx, user:discord.User=None, *, reason=None):
           
           try:
             dmchannel = await user.create_dm()
-            emee = discord.Embed(description=f"You've been **banned** from {guild.name} by {ctx.author.mention}\nReason: {reason}", color=maincolor)
+            emee = discord.Embed(description=f"You've been **banned** from {guild.name} by {ctx.author.mention}\nReason: {reason}", color=MAINCOLOR)
             await dmchannel.send(embed=emee)
           except Forbidden:
             pass
           await guild.ban(user, reason=reason, delete_message_days=0)
-          emba = discord.Embed(color=maincolor)
+          emba = discord.Embed(color=MAINCOLOR)
           emba.set_author(name=f"{user.name}#{user.discriminator} has been banned.", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
           await interaction.message.reply(embed=emba)
 
@@ -2209,7 +1417,7 @@ async def ban(ctx, user:discord.User=None, *, reason=None):
           await interaction.response.defer()
 
           logs_c = bot.get_channel(763791851139629086)
-          embed = discord.Embed(title="Member Banned", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
+          embed = discord.Embed(title="Member Banned", description=f"[Jump to Command]({ctx.message.jump_url})", color=MAINCOLOR)
           embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
           embed.set_thumbnail(url=ctx.author.display_avatar.url)
           embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
@@ -2233,7 +1441,7 @@ async def ban(ctx, user:discord.User=None, *, reason=None):
           
           await interaction.response.defer()
       
-      warningembed = discord.Embed(title="WARNING", description="Are you sure you would like to execute this command?", color=maincolor)
+      warningembed = discord.Embed(title="WARNING", description="Are you sure you would like to execute this command?", color=MAINCOLOR)
       await ctx.reply(embed=warningembed, view=yesCancel())
 
 @ban.error
@@ -2244,9 +1452,9 @@ async def ban_error(ctx, error):
 @bot.command(aliases=['ub'])
 @commands.has_permissions(ban_members=True)
 async def unban(ctx, user:discord.User=None):
-  guild = bot.get_guild(713213895073857548)
+  guild = bot.get_guild(GUILD_ID)
   if user == None:
-    await ctx.reply(embed=discord.Embed(description="Please specify the user you would like to unban.", color=maincolor))
+    await ctx.reply(embed=discord.Embed(description="Please specify the user you would like to unban.", color=MAINCOLOR))
     return
   else:
     try:
@@ -2255,16 +1463,16 @@ async def unban(ctx, user:discord.User=None):
     except NotFound:
       ban = False
     if ban == False:
-      await ctx.reply(embed=discord.Embed(description="Th user is not banned.", color=maincolor))
+      await ctx.reply(embed=discord.Embed(description="Th user is not banned.", color=MAINCOLOR))
       return
     else:
       await guild.unban(user)
-      emba = discord.Embed(color=maincolor)
+      emba = discord.Embed(color=MAINCOLOR)
       emba.set_author(name=f"{user.name}#{user.discriminator} has been unbanned.", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
       await ctx.reply(embed=emba)
                 
       logs_c = bot.get_channel(763791851139629086)
-      embed = discord.Embed(title="Member Unbanned", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
+      embed = discord.Embed(title="Member Unbanned", description=f"[Jump to Command]({ctx.message.jump_url})", color=MAINCOLOR)
       embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
       embed.set_thumbnail(url=ctx.author.display_avatar.url)
       embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
@@ -2296,11 +1504,11 @@ async def snipe(ctx, arg1=None):
     mycursor.execute(f"SELECT * FROM snipe_info WHERE channel_id = '{ctx.channel.id}' ORDER BY time DESC")
     data = mycursor.fetchall()
     if len(data) == 0:
-      return await ctx.reply(embed=discord.Embed(description="There are no messages to snipe!", color=maincolor))
+      return await ctx.reply(embed=discord.Embed(description="There are no messages to snipe!", color=MAINCOLOR))
     
     time = f"<t:{data[0][3]}:R>"
     
-    embed=discord.Embed(description=f"__**Deleted Since:** {time}__\n>>> {data[0][2]}", color=maincolor)
+    embed=discord.Embed(description=f"__**Deleted Since:** {time}__\n>>> {data[0][2]}", color=MAINCOLOR)
     user = await bot.fetch_user(int(data[0][1]))
     embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=f"{user.display_avatar.url}")
     embed.set_footer(text="Latest deleted message.")
@@ -2309,9 +1517,9 @@ async def snipe(ctx, arg1=None):
     mycursor.execute(f"SELECT * FROM snipe_info WHERE channel_id = '{ctx.channel.id}' ORDER BY time DESC")
     data = mycursor.fetchall()
     if len(data) == 0:
-      return await ctx.reply(embed=discord.Embed(description="There are no messages to snipe!", color=maincolor))
+      return await ctx.reply(embed=discord.Embed(description="There are no messages to snipe!", color=MAINCOLOR))
     
-    embed=discord.Embed(color=maincolor)
+    embed=discord.Embed(color=MAINCOLOR)
     embed.set_footer(text=f"Latest {len(data[:10])} deleted messages.")
     
     for i in data[:10]:
@@ -2324,7 +1532,7 @@ async def snipe(ctx, arg1=None):
 @bot.event
 async def on_message_delete(message):
   
-  if message.guild.id == 713213895073857548:
+  if message.guild.id == GUILD_ID:
     if len(message.content) == 0:
       return
     if len(message.content) < 1000:
@@ -2347,7 +1555,7 @@ async def on_message_delete(message):
       db.close()
       
       c = bot.get_channel(763791851139629086)
-      embed = discord.Embed(title="Message Deleted", color=maincolor)
+      embed = discord.Embed(title="Message Deleted", color=MAINCOLOR)
       embed.set_author(name=f"{message.author.name}#{message.author.discriminator}", icon_url=f"{message.author.display_avatar.url}")
       embed.set_thumbnail(url=message.author.display_avatar.url)
       embed.add_field(name="Member", value=message.author.mention, inline=True)
@@ -2357,38 +1565,40 @@ async def on_message_delete(message):
 
 @bot.event
 async def on_message_edit(before_msg, after_msg):
-  
-  if before_msg.guild.id == 713213895073857548:
-    if len(before_msg.content) < 1000 and len(after_msg.content) < 1000:
-      
-      c = bot.get_channel(763791851139629086)
-      embed = discord.Embed(title="Message Edited", description=f"[Jump to Message]({before_msg.jump_url})", color=maincolor)
-      embed.set_author(name=f"{before_msg.author.name}#{before_msg.author.discriminator}", icon_url=f"{before_msg.author.display_avatar.url}")
-      embed.set_thumbnail(url=before_msg.author.display_avatar.url)
-      embed.add_field(name="Member", value=before_msg.author.mention, inline=True)
-      embed.add_field(name="Old Message", value=before_msg.content, inline=True)
-      embed.add_field(name="New Message", value=after_msg.content, inline=True)
-      embed.add_field(name="Channel", value=before_msg.channel.mention, inline=True)
-      await c.send(embed=embed)
+  try:
+    if before_msg.guild.id == GUILD_ID:
+      if len(before_msg.content) < 1000 and len(after_msg.content) < 1000:
+        
+        c = bot.get_channel(763791851139629086)
+        embed = discord.Embed(title="Message Edited", description=f"[Jump to Message]({before_msg.jump_url})", color=MAINCOLOR)
+        embed.set_author(name=f"{before_msg.author.name}#{before_msg.author.discriminator}", icon_url=f"{before_msg.author.display_avatar.url}")
+        embed.set_thumbnail(url=before_msg.author.display_avatar.url)
+        embed.add_field(name="Member", value=before_msg.author.mention, inline=True)
+        embed.add_field(name="Old Message", value=before_msg.content, inline=True)
+        embed.add_field(name="New Message", value=after_msg.content, inline=True)
+        embed.add_field(name="Channel", value=before_msg.channel.mention, inline=True)
+        await c.send(embed=embed)
+  except AttributeError:
+    return
 
 
 @bot.command(aliases=['p'])
 @commands.has_permissions(manage_messages=True)
 async def purge(ctx, limit=None):
   if limit == None:
-    return await ctx.reply(embed=discord.Embed(description="Specify a number of messages to purge.", color=maincolor))
+    return await ctx.reply(embed=discord.Embed(description="Specify a number of messages to purge.", color=MAINCOLOR))
   
   try:
     limit = int(limit)
   except ValueError:
-    return await ctx.reply(embed=discord.Embed(description="The amount of messages must be a number!", color=maincolor))
+    return await ctx.reply(embed=discord.Embed(description="The amount of messages must be a number!", color=MAINCOLOR))
   
   if limit == 0:
-    return await ctx.reply(embed=discord.Embed(description="The number of messages cannot be 0 !", color=maincolor))
+    return await ctx.reply(embed=discord.Embed(description="The number of messages cannot be 0 !", color=MAINCOLOR))
   
   msgs = await ctx.channel.purge(limit=limit+1, oldest_first=False, bulk=True)
   limit = limit-1
-  succembed = discord.Embed(color=maincolor)
+  succembed = discord.Embed(color=MAINCOLOR)
   succembed.set_author(name=f"Successfully purged {len(msgs)-1} messages.", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
   await ctx.send(embed=succembed)
   
@@ -2401,7 +1611,7 @@ async def purge(ctx, limit=None):
   buffer.seek(0)
   
   c = bot.get_channel(763791851139629086)
-  embed = discord.Embed(title=f"Purged {len(msgs)-1} messages", color=maincolor)
+  embed = discord.Embed(title=f"Purged {len(msgs)-1} messages", color=MAINCOLOR)
   embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
   embed.set_thumbnail(url=ctx.author.display_avatar.url)
   embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
@@ -2412,14 +1622,14 @@ async def purge(ctx, limit=None):
 @commands.has_permissions(administrator=True)
 async def role(ctx, user : discord.User=None, roleName=None):
   if user == None:
-    return await ctx.reply(embed=discord.Embed(description="Please specify a user to assign/revoke a role.", color=maincolor))
+    return await ctx.reply(embed=discord.Embed(description="Please specify a user to assign/revoke a role.", color=MAINCOLOR))
     
   if roleName == None:
-    return await ctx.reply(embed=discord.Embed(description="Please specify a role, either role ID or name.", color=maincolor))
+    return await ctx.reply(embed=discord.Embed(description="Please specify a role, either role ID or name.", color=MAINCOLOR))
   
   checkmember = ctx.guild.get_member(user.id)
   if checkmember == None:
-    return await ctx.reply(embed=discord.Embed(description="User wasn't found aka. invalid ID/User.", color=maincolor))
+    return await ctx.reply(embed=discord.Embed(description="User wasn't found aka. invalid ID/User.", color=MAINCOLOR))
   
   user = ctx.guild.get_member(user.id)
   
@@ -2439,17 +1649,17 @@ async def role(ctx, user : discord.User=None, roleName=None):
         rolenames.append(i.name)
     closeststr = difflib.get_close_matches(rolename, rolenames)
     if len(closeststr) == 0:
-      return await ctx.reply(embed=discord.Embed(description="Role wasn't found.", color=maincolor))
+      return await ctx.reply(embed=discord.Embed(description="Role wasn't found.", color=MAINCOLOR))
     
     role = discord.utils.find(lambda r: r.name == closeststr[0], ctx.guild.roles)
     
     if role in user.roles:
       await user.remove_roles(role)
-      embe = discord.Embed(color=maincolor)
+      embe = discord.Embed(color=MAINCOLOR)
       embe.set_author(name=f"Revoked {closeststr[0]} from {user.name}#{user.discriminator}.", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
     
       logs_c = bot.get_channel(763791851139629086)
-      embed = discord.Embed(title="Role Removed", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
+      embed = discord.Embed(title="Role Removed", description=f"[Jump to Command]({ctx.message.jump_url})", color=MAINCOLOR)
       embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
       embed.set_thumbnail(url=ctx.author.display_avatar.url)
       embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
@@ -2460,11 +1670,11 @@ async def role(ctx, user : discord.User=None, roleName=None):
     
     else:
       await user.add_roles(role)
-      embe = discord.Embed(color=maincolor)
+      embe = discord.Embed(color=MAINCOLOR)
       embe.set_author(name=f"Applied {closeststr[0]} to {user.name}#{user.discriminator}.", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
 
       logs_c = bot.get_channel(763791851139629086)
-      embed = discord.Embed(title="Role Added", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
+      embed = discord.Embed(title="Role Added", description=f"[Jump to Command]({ctx.message.jump_url})", color=MAINCOLOR)
       embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
       embed.set_thumbnail(url=ctx.author.display_avatar.url)
       embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
@@ -2479,15 +1689,15 @@ async def role(ctx, user : discord.User=None, roleName=None):
     
     role = ctx.guild.get_role(roleID)
     if role == None:
-      return await ctx.reply(embed=discord.Embed(description="Role wasn't found.", color=maincolor))
+      return await ctx.reply(embed=discord.Embed(description="Role wasn't found.", color=MAINCOLOR))
 
     if role in user.roles:
       await user.remove_roles(role)
-      embe = discord.Embed(color=maincolor)
+      embe = discord.Embed(color=MAINCOLOR)
       embe.set_author(name=f"Revoked {role.name} from {user.name}#{user.discriminator}.", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
 
       logs_c = bot.get_channel(763791851139629086)
-      embed = discord.Embed(title="Role Removed", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
+      embed = discord.Embed(title="Role Removed", description=f"[Jump to Command]({ctx.message.jump_url})", color=MAINCOLOR)
       embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
       embed.set_thumbnail(url=ctx.author.display_avatar.url)
       embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
@@ -2498,11 +1708,11 @@ async def role(ctx, user : discord.User=None, roleName=None):
     
     else:
       await user.add_roles(role)
-      embe = discord.Embed(color=maincolor)
+      embe = discord.Embed(color=MAINCOLOR)
       embe.set_author(name=f"Applied {role.name} to {user.name}#{user.discriminator}.", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
 
       logs_c = bot.get_channel(763791851139629086)
-      embed = discord.Embed(title="Role Added", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
+      embed = discord.Embed(title="Role Added", description=f"[Jump to Command]({ctx.message.jump_url})", color=MAINCOLOR)
       embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
       embed.set_thumbnail(url=ctx.author.display_avatar.url)
       embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
@@ -2532,7 +1742,7 @@ async def mute(ctx, member : discord.Member=None, duration=None, reason=None):
     try:
       
       if member.guild_permissions.administrator == True:
-        await ctx.reply(embed=discord.Embed(description="You can't mute this user.", color=maincolor))
+        await ctx.reply(embed=discord.Embed(description="You can't mute this user.", color=MAINCOLOR))
         return
 
       letter = str(duration[-1])
@@ -2541,13 +1751,13 @@ async def mute(ctx, member : discord.Member=None, duration=None, reason=None):
         
         timeout = int(duration[:-1]) * time_convert[duration[-1]]
         if timeout > 2419200:
-          await ctx.reply(embed=discord.Embed(description="The duration cannot be longer than 28 days!", color=maincolor))
+          await ctx.reply(embed=discord.Embed(description="The duration cannot be longer than 28 days!", color=MAINCOLOR))
           return
         else:
           
           time = timedelta(seconds=timeout)
           await member.timeout_for(duration=time, reason=reason)
-          emba = discord.Embed(color=maincolor)
+          emba = discord.Embed(color=MAINCOLOR)
           if letter == "s":
             emba.set_author(name=f"{member.name}#{member.discriminator} has been muted for {number} second/s", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
             typee = f"{number} second/s"
@@ -2567,7 +1777,7 @@ async def mute(ctx, member : discord.Member=None, duration=None, reason=None):
           
           until = datetime.now() + timedelta(seconds=timeout)
           logs_c = bot.get_channel(763791851139629086)
-          embed = discord.Embed(title="Member Muted", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
+          embed = discord.Embed(title="Member Muted", description=f"[Jump to Command]({ctx.message.jump_url})", color=MAINCOLOR)
           embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
           embed.set_thumbnail(url=ctx.author.display_avatar.url)
           embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
@@ -2582,35 +1792,35 @@ async def mute(ctx, member : discord.Member=None, duration=None, reason=None):
         return
           
     except ValueError:
-      await ctx.reply(embed=discord.Embed(description="Duration must be a number!", color=maincolor))
+      await ctx.reply(embed=discord.Embed(description="Duration must be a number!", color=MAINCOLOR))
       return
   else:
     if member == None:
-      await ctx.reply(embed=discord.Embed(description="Please specify a user to mute.", color=maincolor))
+      await ctx.reply(embed=discord.Embed(description="Please specify a user to mute.", color=MAINCOLOR))
       return
     else:
       if duration == None:
-        await ctx.reply(embed=discord.Embed(description="Please state the duration `(e.g. of duration: 10s = 10 secs / 10h = 10 hours / 10d = 10 days)`", color=maincolor))
+        await ctx.reply(embed=discord.Embed(description="Please state the duration `(e.g. of duration: 10s = 10 secs / 10h = 10 hours / 10d = 10 days)`", color=MAINCOLOR))
         return
 
 @bot.command()
 @commands.has_permissions(moderate_members=True)
 async def unmute(ctx, member : discord.Member=None):
   if member == None:
-    await ctx.reply(embed=discord.Embed(description="Please specify a user to unmute.", color=maincolor))
+    await ctx.reply(embed=discord.Embed(description="Please specify a user to unmute.", color=MAINCOLOR))
     return
   
   if member.timed_out == False:
-    return await ctx.reply(embed=discord.Embed(description="The user isn't muted.", color=maincolor))
+    return await ctx.reply(embed=discord.Embed(description="The user isn't muted.", color=MAINCOLOR))
 
   await member.remove_timeout()
   
-  emba = discord.Embed(color=maincolor)
+  emba = discord.Embed(color=MAINCOLOR)
   emba.set_author(name=f"{member.name}#{member.discriminator} has been unmuted.", icon_url="https://cdn.discordapp.com/attachments/706110242399715388/976789662112833546/unknown.png")
   await ctx.reply(embed=emba)
   
   logs_c = bot.get_channel(763791851139629086)
-  embed = discord.Embed(title="Member Unmuted", description=f"[Jump to Command]({ctx.message.jump_url})", color=maincolor)
+  embed = discord.Embed(title="Member Unmuted", description=f"[Jump to Command]({ctx.message.jump_url})", color=MAINCOLOR)
   embed.set_author(name=f"{ctx.author.name}#{ctx.author.discriminator}", icon_url=f"{ctx.author.display_avatar.url}")
   embed.set_thumbnail(url=ctx.author.display_avatar.url)
   embed.add_field(name="Staff Responsible", value=ctx.author.mention, inline=True)
@@ -2618,292 +1828,762 @@ async def unmute(ctx, member : discord.Member=None):
   embed.add_field(name="Channel", value=ctx.channel.mention, inline=True)
   await logs_c.send(embed=embed)
 
-class Start_Ticket(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-    @discord.ui.button(row=0, label='Start', style=discord.ButtonStyle.green, custom_id="startticket", disabled=False, emoji="<:mmbot_continue:881774548335349772>")
-    async def button_callback1(self, button, interaction):
-        if interaction.user.id != 891449503276736512:
-            return await interaction.response.defer()
+class Use_MMPass(discord.ui.View):
+  def __init__(self):
+    super().__init__(timeout=None)
+    self.clicked = False
+  @discord.ui.button(row=0, label="Yes", style=discord.ButtonStyle.green, custom_id="yesuse", disabled=False)
+  async def button_callback1(self, button, interaction):
+    
+    await interaction.response.defer()
+
+    userslist = interaction.message.mentions
+    if interaction.user not in userslist:
+      return
+    
+    if self.clicked == True:
+      return
+
+    self.clicked = True
+
+    for child in self.children:
+      child.disabled = True
+    interaction.message.embeds[0].description = f"{interaction.user.mention} has used their MM-Pass."
+    await interaction.message.edit(view=self, embed=interaction.message.embeds[0])
+
+    pass_role = interaction.guild.get_role(MMPASS_ID)
+    await interaction.user.remove_roles(pass_role)
+
+    ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
+    logembed = discord.Embed(description=f"Author: **{interaction.user.name}#{interaction.user.discriminator}** | ID: {interaction.user.id}\nTicket: **{interaction.channel.name}** | ID: {interaction.channel.id}\nAction: **Used MM-Pass**", color=SUCCCOLOR)
+    logembed.set_author(name=f"{interaction.user.name}#{interaction.user.discriminator}", icon_url=f"{interaction.user.display_avatar.url}")
+    await ticketlogs.send(embed=logembed)
+
+    db = mysql.connector.connect(
+      host="remotemysql.com",
+      user="uDNB0NiyRu",
+      passwd="AAxYedadAw",
+      database="uDNB0NiyRu")
+    mycursor = db.cursor()
+    mycursor.execute(f"SELECT trader_seller_id, trade_amount_usd FROM autocrypto_tickets_info WHERE channel_id = '{interaction.channel.id}'")
+    data = mycursor.fetchall()
+    usd = float(data[0][1])
+    usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
+    totalusd = usd
+    btc = shorten_btc(totalusd/usdprice)
+    json_data = {'currency': 'btc'}
+    res = session.post(f'https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/addresses', json=json_data)
+    address = res.json()['address']
+    btc = getWholeFloat(btc)
+    embed2 = discord.Embed(title="Payment Information",description=f"Click the \"Paid\" button once you've sent the payment to the address.", color=MAINCOLOR)
+    embed2.set_thumbnail(url=f"https://chart.googleapis.com/chart?chs=500x500&cht=qr&chl={address}")
+    embed2.add_field(name="USD", value=f"${totalusd}", inline=True)
+    embed2.add_field(name="BTC", value=f"{btc}", inline=True)
+    embed2.add_field(name="Payment Address", value=f"{address}", inline=False)
+    embed2.set_footer(text=f"1 BTC = ${usdprice}")
+    await interaction.channel.send(f"<@{data[0][0]}> Send the payment to the following address.", embed=embed2, view=PasteAddress())
+    mycursor.execute(f"UPDATE autocrypto_tickets_info SET trade_stated=%s, hold_address=%s, ticket_status=%s, fee_amount_usd=%s, fee_amount_cry=%s WHERE channel_id=%s", ("Yes", address, "Active", 0, 0, interaction.channel.id))
+    db.commit()
+    mycursor.close();db.close()
+
+  @discord.ui.button(row=0, label="No", style=discord.ButtonStyle.red, custom_id="dontuse", disabled=False)
+  async def button_callback2(self, button, interaction):
+    
+    await interaction.response.defer()
+
+    userslist = interaction.message.mentions
+    if interaction.user not in userslist:
+      return
+
+    if self.clicked == True:
+      return
+
+    self.clicked = True
+
+    for child in self.children:
+      child.disabled = True
+    await interaction.message.edit(view=self)
+
+    db = mysql.connector.connect(
+      host="remotemysql.com",
+      user="uDNB0NiyRu",
+      passwd="AAxYedadAw",
+      database="uDNB0NiyRu")
+    mycursor = db.cursor()
+    mycursor.execute(f"SELECT trader_seller_id, trade_amount_usd FROM autocrypto_tickets_info WHERE channel_id = '{interaction.channel.id}'")
+    data = mycursor.fetchall()
+    usd = float(data[0][1])
+    usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
+    fee = usd * 0.005
+    if fee < 1.00:
+      fee = 1.00
+    else:
+      fee = fee
+    totalusd = usd + fee
+    btc = shorten_btc(totalusd/usdprice)
+    json_data = {'currency': 'btc'}
+    res = session.post(f'https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/addresses', json=json_data)
+    address = res.json()['address']
+    btc = getWholeFloat(btc)
+    embed2 = discord.Embed(title="Payment Information",description=f"The total USD includes a 0.5% fee of: **${fee}**\nClick the \"Paid\" button once you've sent the payment to the address.", color=MAINCOLOR)
+    embed2.set_thumbnail(url=f"https://chart.googleapis.com/chart?chs=500x500&cht=qr&chl={address}")
+    embed2.add_field(name="USD", value=f"${totalusd}", inline=True)
+    embed2.add_field(name="BTC", value=f"{btc}", inline=True)
+    embed2.add_field(name="Payment Address", value=f"{address}", inline=False)
+    embed2.set_footer(text=f"1 BTC = ${usdprice}")
+    await interaction.channel.send(f"<@{data[0][0]}> Send the payment along with the fee to the following address.", embed=embed2, view=PasteAddress())
+    mycursor.execute(f"UPDATE autocrypto_tickets_info SET trade_stated=%s, hold_address=%s, ticket_status=%s WHERE channel_id=%s", ("Yes", address, "Active", interaction.channel.id))
+    db.commit()
+    mycursor.close();db.close()
+
+@bot.command()
+async def test(ctx):
+  if ctx.author.id == 358594990982561792:
+    embed = discord.Embed(title="Automated Request", color=MAINCOLOR)
+    embed.add_field(name="Fee Payments", value="Currently we only accept BTC, however you can buy passes with LTC/ETH.", inline=False)
+    embed.add_field(name="Instructions", value="Read the bots instructions carefully, following them incorrectly may result in the loss of your funds.", inline=False)
+    embed.add_field(name="Cancelling Deals", value="If a deal is cancelled, a Support Member will assist you when they are available. You will not be refunded if you already paid the fee.", inline=False)
+    embed2 = discord.Embed(title="Ticket Creator", description="To open an Automated Middleman Request, your deal must consist of BTC.\n\nIf your deal doesn't involve BTC or other cryptocurrency - don't bother creating a ticket.", color=MAINCOLOR)
+    embedss = []
+    embedss.append(embed)
+    embedss.append(embed2)
+
+    await ctx.send("test", embeds=embedss, view=AUTO_CRYPTO_Tickets())
+
+class Off_AUTO_CRYPTO_Tickets(discord.ui.View):
+  def __init__(self):
+    super().__init__(timeout=None)
+  @discord.ui.button(row=0, label='Open Request', style=discord.ButtonStyle.blurple, custom_id="auto_crypto_tickettt", disabled=True, emoji="<:mmbot_groups:863985640312274964>")
+  async def button_callback1(self, button, interaction):        
+    print(1)
+  @discord.ui.button(row=0, label='Buy Passes', style=discord.ButtonStyle.green, custom_id="passes_tickettt", disabled=True, emoji="<:purchase_pass:995100317907697834>")
+  async def button_callback2(self, button, interaction):        
+    print(1)
+
+users_oncooldown = []
+
+class AUTO_CRYPTO_Tickets(discord.ui.View):
+  def __init__(self):
+    super().__init__(timeout=None)
+  @discord.ui.button(row=0, label='Open Request', style=discord.ButtonStyle.blurple, custom_id="auto_crypto_ticket", disabled=False, emoji="<:mmbot_groups:863985640312274964>")
+  async def button_callback1(self, button, interaction):        
+    try:
+      global users_oncooldown
+
+      await interaction.response.send_message(content=f"**Prepearing..**", ephemeral=True)
+    
+      if interaction.user.id in users_oncooldown:
+        await interaction.edit_original_message(content=f"**Slow Down! You're on cooldown.**")
+        return
+      else:
+        users_oncooldown.append(interaction.user.id)
+
+        await asyncio.sleep(1.5)
+        
+        db = mysql.connector.connect(
+          host="remotemysql.com",
+          user="uDNB0NiyRu",
+          passwd="AAxYedadAw",
+          database="uDNB0NiyRu")
+        mycursor = db.cursor()
+
+        mycursor.execute(f"SELECT * FROM autocrypto_tickets_info")
+        Toggle = True
+        for x in mycursor:
+          if int(x[2]) == interaction.user.id:
+            Toggle = False
+            await interaction.edit_original_message(content=f"**You Already Have a Ticket Created!** -> <#{x[0]}>")
+            try:
+              users_oncooldown.remove(interaction.user.id)
+            except ValueError:
+              pass
+            mycursor.close()
+            db.close()
+            return
+        if Toggle == True:
+          
+          await asyncio.sleep(0.5)
+          
+          await interaction.edit_original_message(content=f"**Creating ticket..**")
+
+          guild = bot.get_guild(GUILD_ID)
+          ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
+          ###
+          tickets_category = bot.get_channel(AUTOCRYPTO_CATEGORY_ID)
+          ###
+          #supprole = guild.get_role(869357960114098177)
+          overwrites = {
+              guild.default_role: discord.PermissionOverwrite(view_channel=False),
+              interaction.user: discord.PermissionOverwrite(send_messages=False, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
+              #supprole: discord.PermissionOverwrite(send_messages=True, view_channel=True, embed_links=True, attach_files=True)
+          }
+          code = "".join(random.choices(string.ascii_letters + string.digits, k=6))
+          channel = await guild.create_text_channel(f"“ゝmm-{interaction.user.name}", topic=f"Chase's Auto Crypto MM | Request ID: {code}", category=tickets_category, overwrites=overwrites)
+          await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
+          
+          mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
+          mycursor.execute("INSERT INTO autocrypto_tickets_info (channel_id, channel_code, channel_owner_id) VALUES (%s, %s, %s)", (channel.id, str(code), interaction.user.id))
+          try:
+            users_oncooldown.remove(interaction.user.id)
+          except ValueError:
+            pass
+          db.commit()
+          mycursor.close()
+          db.close()
+          
+          logembed = discord.Embed(description=f"Author: **{interaction.user.name}#{interaction.user.discriminator}** | ID: {interaction.user.id}\nTicket: **{channel.name}** | ID: {channel.id}\nAction: **Created Ticket**", color=SUCCCOLOR)
+          logembed.set_author(name=f"{interaction.user.name}#{interaction.user.discriminator}", icon_url=f"{interaction.user.display_avatar.url}")
+          await ticketlogs.send(embed=logembed)
+          embed = discord.Embed(title="﹒Chase's Middleman Service`", description=f"〃───────────〃\n**Hello there, {interaction.user.mention} ! ៸៸**\n",color=MAINCOLOR)
+          embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user} | {interaction.user.id}')
+          #await channel.send(f"{interaction.user.mention}\n> `This ticket will be closed in 10 minutes if the format wasn't specified`", embed=embed)
+          await channel.send(f"{interaction.user.mention}", embed=embed)
+          await asyncio.sleep(0.2)
+          embed2 = discord.Embed(title="Are you the seller or the buyer?", description="Simply click:\n> \"Seller\" if you are the one giving the crypto.\n> \"Buyer\" if you are the one receiving the crypto.", color=MAINCOLOR)
+          embed2.set_footer(text="Selected: ")
+          await channel.send(embed=embed2, view=SellerOrBuyer())
+    except mysql.connector.errors.InternalError:
+      await asyncio.sleep(3)
+      try:
+        users_oncooldown.remove(interaction.user.id)
+      except ValueError:
+        pass
+  @discord.ui.button(row=0, label='Buy Passes', style=discord.ButtonStyle.green, custom_id="passes_ticket", disabled=False, emoji="<:purchase_pass:995100317907697834>")
+  async def button_callback2(self, button, interaction):
+    try:
+      global users_oncooldown
+
+      await interaction.response.send_message(content=f"**Prepearing..**", ephemeral=True)
+    
+      if interaction.user.id in users_oncooldown:
+        await interaction.edit_original_message(content=f"**Slow Down! You're on cooldown.**")
+        return
+      else:
+        users_oncooldown.append(interaction.user.id)
+
+        await asyncio.sleep(1.5)
+        
+        db = mysql.connector.connect(
+          host="remotemysql.com",
+          user="uDNB0NiyRu",
+          passwd="AAxYedadAw",
+          database="uDNB0NiyRu")
+        mycursor = db.cursor()
+
+        mycursor.execute(f"SELECT * FROM passes_tickets_info")
+        Toggle = True
+        for x in mycursor:
+          if int(x[2]) == interaction.user.id:
+            Toggle = False
+            await interaction.edit_original_message(content=f"**You Already Have a Ticket Created!** -> <#{x[0]}>")
+            try:
+              users_oncooldown.remove(interaction.user.id)
+            except ValueError:
+              pass
+            mycursor.close()
+            db.close()
+            return
+        if Toggle == True:
+          
+          await asyncio.sleep(0.5)
+          
+          await interaction.edit_original_message(content=f"**Creating ticket..**")
+
+          guild = bot.get_guild(GUILD_ID)
+          ###
+          tickets_category = bot.get_channel(PASSES_CATEGORY_ID)
+          ###
+          #supprole = guild.get_role(869357960114098177)
+          overwrites = {
+              guild.default_role: discord.PermissionOverwrite(view_channel=False),
+              interaction.user: discord.PermissionOverwrite(send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
+              #supprole: discord.PermissionOverwrite(send_messages=True, view_channel=True, embed_links=True, attach_files=True)
+          }
+          code = "".join(random.choices(string.ascii_letters + string.digits, k=6))
+          channel = await guild.create_text_channel(f"“ゝpass-{interaction.user.name}", topic=f"Chase's Service | Request ID: {code}", category=tickets_category, overwrites=overwrites)
+          await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
+          
+          mycursor.execute("INSERT INTO added_info (userID, channelID) VALUES (%s, %s)", (interaction.user.id, channel.id))
+          mycursor.execute("INSERT INTO passes_tickets_info (channel_id, channel_code, channel_owner_id) VALUES (%s, %s, %s)", (channel.id, str(code), interaction.user.id))
+          try:
+            users_oncooldown.remove(interaction.user.id)
+          except ValueError:
+            pass
+          db.commit()
+          mycursor.close()
+          db.close()
+          
+          embed = discord.Embed(title="﹒Chase's Middleman Service`", description=f"〃───────────〃\n**Hello there, {interaction.user.mention} ! ៸៸**\nPlease state your payment method you'd like to pay with, then ping Chase/<@891449503276736512> when you're ready to pay.",color=MAINCOLOR)
+          embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user} | {interaction.user.id}')
+          await channel.send(f"{interaction.user.mention}", embed=embed)
+    except mysql.connector.errors.InternalError:
+      await asyncio.sleep(3)
+      try:
+        users_oncooldown.remove(interaction.user.id)
+      except ValueError:
+        pass
+
+class PasteAddress(discord.ui.View):
+  def __init__(self):
+    super().__init__(timeout=None)
+  @discord.ui.button(row=0, label="Paste Address", style=discord.ButtonStyle.blurple, custom_id="pasteaddress", disabled=False)
+  async def button_callback1(self, button, interaction):
+    global session
+
+    #db = mysql.connector.connect(
+    #  host="remotemysql.com",
+    #  user="uDNB0NiyRu",
+    #  passwd="AAxYedadAw",
+    #  database="uDNB0NiyRu")
+    #mycursor = db.cursor()
+
+    #mycursor.execute(f"SELECT trader_seller_id FROM autocrypto_tickets_info WHERE channel_id = '{interaction.channel.id}'")
+    #data = mycursor.fetchall()
+
+    #if interaction.user.id != data[0][0]:
+    #  await interaction.response.defer()
+    #  mycursor.close();db.close()
+    #  return
+
+    address = interaction.message.embeds[0].fields[2].value
+    await interaction.response.send_message(content=address, ephemeral=False)
+    #mycursor.close();db.close()
+  @discord.ui.button(row=0, label="Paid", style=discord.ButtonStyle.green, custom_id="paidcash", disabled=False)
+  async def button_callback2(self, button, interaction):
+    global session
+
+    db = mysql.connector.connect(
+      host="remotemysql.com",
+      user="uDNB0NiyRu",
+      passwd="AAxYedadAw",
+      database="uDNB0NiyRu")
+    mycursor = db.cursor()
+
+    mycursor.execute(f"SELECT trader_seller_id, hold_address, fee_amount_cry, trade_amount_cry, trade_amount_usd, fee_amount_usd FROM autocrypto_tickets_info WHERE channel_id = '{interaction.channel.id}'")
+    data = mycursor.fetchall()
+
+    if interaction.user.id != data[0][0]:
+      await interaction.response.defer()
+      mycursor.close();db.close()
+      return
+
+    for child in self.children:
+      child.disabled = True
+    await interaction.message.edit(view=self)
+
+    await interaction.response.defer()
+
+    address = data[0][1]
+
+    res = session.get(f"https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/history?currency=btc&q=item_type:receipt,address:{address}").json()
+    totalbtc = 0
+    if len(res['items']) == 0:
+      mycursor.close();db.close()
+      await interaction.message.edit(view=PasteAddress())
+      return await interaction.channel.send(f"{interaction.user.mention} No transactions were detected.", delete_after=5)
+
+    for i in res['items']:
+      btc_amount = float(i['amount'])/100000000
+      totalbtc += btc_amount
+
+    trade_amount_usd = data[0][4]
+    fee_amount_usd = data[0][5]
+    promised_usd_amount = trade_amount_usd+fee_amount_usd
+
+    usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
+    received_usd_amount = float(shorten(totalbtc*usdprice))
+
+    continue_trade = False
+    paid_fee_usd = 0
+    if received_usd_amount >= promised_usd_amount:
+      continue_trade = True
+      paid_fee_usd = fee_amount_usd
+    else:
+      req_usd_amount = promised_usd_amount-received_usd_amount
+      req_btc_amount = shorten_btc(req_usd_amount/usdprice)
+
+      if req_usd_amount <= 0.20:
+        continue_trade = True
+        paid_fee_usd = fee_amount_usd-req_usd_amount
+      else:
+        continue_trade = False
+
+    if continue_trade == True:
+      txString = ""
+      unconf = 0
+      for i in res['items']:
+        status = ""
+        if i['is_confirmed'] == True:
+          status = "<a:MCE_yes:914566072101912628> Confirmed <a:MCE_yes:914566072101912628>"
+        else:
+          status = "<a:No:914566121460486184> Unconfirmed <a:No:914566121460486184>"
+          unconf += 1
+
+        txString += f"> ID: [{i['id']}](https://blockchair.com/bitcoin/transaction/`{i['id']})\n> Status: {status}\n\n"
+
+      await interaction.channel.send("<a:MCE_yes:914566072101912628> Payment was received <a:MCE_yes:914566072101912628>")
+
+      trade_amount_usd_1 = totalbtc*usdprice-paid_fee_usd
+      trade_amount_btc_1 = trade_amount_usd_1 / usdprice
+      fee_amount_btc_1 = totalbtc-trade_amount_btc_1
+
+      mycursor.execute(f"UPDATE autocrypto_tickets_info SET trade_amount_cry=%s, fee_amount_cry=%s WHERE channel_id=%s", (float(trade_amount_btc_1), float(fee_amount_btc_1), interaction.channel.id))
+      db.commit()
       
-        embed = discord.Embed(
-            title="Middleman Fee",
-            color=maincolor)
-        embed.add_field(name="Standard Fee", value="`$3.00`", inline=True)
-        embed.add_field(name="Server Booster Fee", value="`FREE`", inline=True)
-        embed.add_field(name="Payment Methods", value="<:fee_cashapp:870211530120118282> - `$ChaseMM0002`\n<:fee_bitcoin:870211550722543707> - `bc1qkha0hcl36vuujwcen6zrxme8s2kqjwen5703jj`\n<:fee_eth:913749231678930975> - `0x38471306529380a90045Fb4b63FF612F3A1E3437`\n<:fee_ltc:917264308218515526> - `Ldqtpytrp4PvezPKDuTPf3R2Xm5a42ZTb5`\n<:fee_zelle:870211540664602674> - `Temporarily Unavailable`", inline=False)
-        embed.add_field(name="Finished", value="Please send a screenshot/transaction ID after you pay the fee. When paying with Ethereum, you MUST cover the gas fee!", inline=False)
-        
-        for child in self.children:
-            child.disabled = True
-        await interaction.message.edit(view=self)
-        
-        await interaction.response.defer()
-        await interaction.channel.send(embed=embed)
-        
-        time.sleep(2)
-        
-        embed = discord.Embed(title="Fee Confirmation", color=maincolor)
-        await interaction.channel.send(content="<@891449503276736512>", embed=embed, view=Fee_Conf())
+      if unconf == 0:
+        embede = discord.Embed(title="Transaction/s", description="The transaction/s have already confirmed.", color=MAINCOLOR)
+        mycursor.execute(f"UPDATE autocrypto_tickets_info SET payment_detected=%s, crypto_received=%s WHERE channel_id=%s", ("Yes", "Yes", interaction.channel.id))
+        db.commit()
+      else:
+        embede = discord.Embed(title="Transaction/s", description="The bot will ping both of you once the transaction/s reaches 1 confirmation.", color=MAINCOLOR)
+        mycursor.execute(f"UPDATE autocrypto_tickets_info SET payment_detected=%s WHERE channel_id=%s", ("Yes", interaction.channel.id))
+        db.commit()
 
+      embede.add_field(name="Transaction/s Hash", value=txString, inline=False)
+      await interaction.channel.send(embed=embede)
 
-class Fee_Conf(discord.ui.View):
-    def __init__(self):
+      if unconf != 0:
+        await interaction.channel.send("Please wait until the transaction/s reaches 1 confirmation.")
+
+      mycursor.close();db.close()
+
+    else:
+      req_usd_amount = promised_usd_amount-received_usd_amount
+      req_btc_amount = shorten_btc(req_usd_amount/usdprice)
+
+      usd = shorten(totalbtc*usdprice)
+
+      totalbtc = getWholeFloat(totalbtc)
+
+      req_btc_amount = getWholeFloat(req_btc_amount)
+
+      await interaction.channel.send(f"You have sent only `{totalbtc}` btc which is `${usd}`, please send `{req_btc_amount}` btc more.")
+      mycursor.close();db.close()
+      await interaction.message.edit(view=PasteAddress())
+      return
+
+@bot.command()
+@commands.cooldown(1, 10, commands.BucketType.user)
+async def confirm(ctx):
+  if ctx.message.channel.category.id == AUTOCRYPTO_CATEGORY_ID:
+    db = mysql.connector.connect(
+      host="remotemysql.com",
+      user="uDNB0NiyRu",
+      passwd="AAxYedadAw",
+      database="uDNB0NiyRu")
+    mycursor = db.cursor()
+
+    mycursor.execute(f"SELECT trader_seller_id, ticket_status, crypto_received, trade_confirmed, trader_receiver_id FROM autocrypto_tickets_info WHERE channel_id = '{ctx.channel.id}'")
+    data = mycursor.fetchall()
+
+    if data[0][1] != "Active":
+      mycursor.close();db.close()
+      return
+
+    if ctx.author.id != data[0][0]:
+      mycursor.close(); db.close()
+      await ctx.reply("You don't have permission to use this command.")
+      return
+
+    if data[0][2] == "No":
+      mycursor.close(); db.close()
+      await ctx.reply("The bot has not received the payment yet.")
+      return
+
+    if data[0][3] == "Yes":
+      mycursor.close(); db.close()
+      await ctx.reply("The trade has already been confirmed.")
+      return
+      
+    class haveYouBeenPaid(discord.ui.View):
+      def __init__(self):
         super().__init__(timeout=None)
-    @discord.ui.button(row=0, label='Paid', style=discord.ButtonStyle.green, custom_id="feeconf1", disabled=False, emoji="<:mmbot_approve:863985290602479627>")
-    async def button_callback1(self, button, interaction):
-        if interaction.user.id != 891449503276736512:
-            return await interaction.response.defer()
+      @discord.ui.button(row=0, label="Yes", style=discord.ButtonStyle.green, custom_id="lolYes", disabled=False)
+      async def button_callback1(self, button, interaction):
+        
+        await interaction.response.defer()
+        
+        if interaction.user.id != data[0][0]:
+          return
         
         for child in self.children:
-            child.disabled = True
+          child.disabled = True
         await interaction.message.edit(view=self)
 
-        await interaction.response.defer()
-        embed = discord.Embed(title="Proceeding...", color=maincolor)
-        await interaction.channel.send(embed=embed)
-        time.sleep(2)
-        embed = discord.Embed(title="What Are You Holding?", color=maincolor)
-        await interaction.channel.send("<@891449503276736512>", embed=embed, view=Lims_Crypto())
-
-    @discord.ui.button(row=0, label='Pass Used', style=discord.ButtonStyle.grey, custom_id="feeconf2", disabled=False, emoji="<:mmbot_account:863985851079983105>")
-    async def button_callback2(self, button, interaction):
-        if interaction.user.id != 891449503276736512:
-            return await interaction.response.defer()
+        db = mysql.connector.connect(
+          host="remotemysql.com",
+          user="uDNB0NiyRu",
+          passwd="AAxYedadAw",
+          database="uDNB0NiyRu")
+        mycursor = db.cursor()
         
-        for child in self.children:
-            child.disabled = True
-        await interaction.message.edit(view=self)
+        mycursor.execute(f"UPDATE autocrypto_tickets_info SET trade_confirmed=%s WHERE channel_id=%s", ("Yes", ctx.channel.id))
+        db.commit()
+        mycursor.close()
+        db.close()
+        
+        await interaction.message.reply(content=f"**Your trader can now withdraw their crypto.**")
+        await interaction.channel.send(f"<@{data[0][4]}> Use the command `$redeem Addy`\nAddy is your crypto address.")
+        
+      @discord.ui.button(row=0, label="No", style=discord.ButtonStyle.red, custom_id="Nopee", disabled=False)
+      async def button_callback2(self, button, interaction):
+        
+        await interaction.response.defer()          
+        
+        if interaction.user.id != data[0][0]:
+          return
 
-        await interaction.response.defer()
-        embed = discord.Embed(title="Proceeding...", color=maincolor)
-        await interaction.channel.send(embed=embed)
-        time.sleep(2)
-        embed = discord.Embed(title="What Are You Holding?", color=maincolor)
-        await interaction.channel.send("<@891449503276736512>", embed=embed, view=Lims_Crypto())
+        await interaction.message.delete()
+      
+    embed=discord.Embed(title="Are you sure you have received your items/money?", description="> By clicking \"Yes\", you will give your trader permission to withdraw their crypto.", color=MAINCOLOR)
+    await ctx.reply(embed=embed, view=haveYouBeenPaid())
 
-    @discord.ui.button(row=0, label='Not Paid', style=discord.ButtonStyle.red, custom_id="feeconf3", disabled=False, emoji="<:mmbot_deny:863985438503206922>")
-    async def button_callback3(self, button, interaction):
-        if interaction.user.id != 891449503276736512:
-            return await interaction.response.defer()
+    mycursor.close(); db.close()
 
-        await interaction.response.defer()
-        embed = discord.Embed(title="Fee Hasn't Been Paid", color=maincolor)
-        await interaction.channel.send(embed=embed)
+@bot.command()
+@commands.cooldown(1, 10, commands.BucketType.user)
+async def redeem(ctx, addy=None):
+  if ctx.message.channel.category.id == AUTOCRYPTO_CATEGORY_ID:
+    global session
 
+    db = mysql.connector.connect(
+      host="remotemysql.com",
+      user="uDNB0NiyRu",
+      passwd="AAxYedadAw",
+      database="uDNB0NiyRu")
+    mycursor = db.cursor()
 
-class Lims_Crypto(discord.ui.View):
-    def __init__(self):
+    mycursor.execute(f"SELECT trader_seller_id, ticket_status, crypto_received, trade_confirmed, trader_receiver_id, has_paid, trade_amount_cry, hold_address FROM autocrypto_tickets_info WHERE channel_id = '{ctx.channel.id}'")
+    data = mycursor.fetchall()
+
+    if data[0][1] != "Active":
+      mycursor.close();db.close()
+      return
+
+    if ctx.author.id != data[0][4]:
+      mycursor.close(); db.close()
+      await ctx.reply("You don't have permission to use this command.")
+      return
+
+    if data[0][5] == "Yes":
+      mycursor.close(); db.close()
+      await ctx.reply("The bot has already sent you the payment.")
+      return
+
+    if data[0][2] == "No":
+      mycursor.close(); db.close()
+      await ctx.reply("The bot has not received the payment yet.")
+      return
+
+    if data[0][3] == "No":
+      mycursor.close(); db.close()
+      await ctx.reply("Your trader has not used the `$confirm` command yet.")
+      return
+
+    if addy == None:
+      mycursor.close(); db.close()
+      await ctx.reply("Addy is missing, provide your crypto address.")
+      return
+
+    params = {'address': addy}
+    res = session.get('https://apirone.com/api/v2/network/btc/is_valid_address', params=params).json()
+    if res == False:
+      mycursor.close(); db.close()
+      await ctx.reply("The address you provided is invalid.")
+      return
+
+    class IsThisYourAddy(discord.ui.View):
+      def __init__(self):
         super().__init__(timeout=None)
-    @discord.ui.button(row=0, label='Limiteds', style=discord.ButtonStyle.grey, custom_id="limscrypto1", disabled=False, emoji="<:mmbot_limited:880306930831224843>")
-    async def button_callback1(self, button, interaction):
-        if interaction.user.id != 891449503276736512:
-            return await interaction.response.defer()
+      @discord.ui.button(row=0, label="Yes", style=discord.ButtonStyle.green, custom_id="yesMyAddy", disabled=False)
+      async def button_callback1(self, button, interaction):
+        
+        await interaction.response.defer()
+        
+        if interaction.user.id != data[0][4]:
+          return
         
         for child in self.children:
-            child.disabled = True
+          child.disabled = True
         await interaction.message.edit(view=self)
-        
-        await interaction.response.defer()
-        
-        user = get_cookie()
-        session = requests.Session()
 
-        js = {'usernames': [user,],'excludeBannedUsers': False}
-        res = session.post('https://users.roblox.com/v1/usernames/users', data=js)
-        rbx_userID = res.json()['data'][0]['id']
-        get_avatar_0 = session.get(f"https://thumbnails.roblox.com/v1/users/avatar?userIds={rbx_userID}&size=720x720&format=Png&isCircular=false")
-        avatar_0 = get_avatar_0.json()["data"][0]["imageUrl"]
+        json_data = {
+            'currency': 'btc',
+            'transfer-key': APIRONE_TRANSFER_ID,
+            'addresses': [data[0][7]],
+            'destinations': [
+                {
+                    'address': addy,
+                    'amount': round(data[0][6]*100000000),
+                },
+            ],
+            'fee': 'normal',
+            'subtract-fee-from-amount': True,
+        }
 
-        embed = discord.Embed(title="Middleman Account", description="If you are the **seller**, send the Limiteds you are selling to this account.", color=maincolor)
-        embed.set_thumbnail(url=avatar_0)
-        
-        class TradeMeProfile(discord.ui.View):
-            def __init__(self):
-                super().__init__(timeout=None)
-                self.add_item(discord.ui.Button(label="Trade Me", url=f"https://www.roblox.com/users/{rbx_userID}/trade"))
-                self.add_item(discord.ui.Button(label="Profile", url=f"https://www.roblox.com/users/{rbx_userID}/profile"))
-        
-        await interaction.channel.send(embed=embed, view=TradeMeProfile())
+        res = session.post(f'https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/transfer', json=json_data)
+        if res.status_code != 200:
+          await interaction.message.reply(content=f"Unknown error has occured, please ping Chase or Kookie and let them know about this.")
+          return
 
-        time.sleep(2)
+        txid = ""
+        for i in res.json()['txs']:
+          txid = i
 
-        embed = discord.Embed(title="Did you Receive the Items?", color=maincolor)
-        
-        await interaction.channel.send("<@891449503276736512>", embed=embed, view=yesNo_First())
-            
-    @discord.ui.button(row=0, label='Crypto', style=discord.ButtonStyle.grey, custom_id="limscrypto2", disabled=False, emoji="<:mmbot_refresh:864404034881716224>")
-    async def button_callback2(self, button, interaction):
-        if interaction.user.id != 891449503276736512:
-            return await interaction.response.defer()
-        
-        for child in self.children:
-            child.disabled = True
-        await interaction.message.edit(view=self)
-        
-        await interaction.response.defer()
-        
-        embed = discord.Embed(description="If you are the one paying with cryptocurrency, send the payment to one of the following payment methods.", color=maincolor)
-        
-        embed.add_field(name="Payment Methods", value="<:fee_bitcoin:870211550722543707> - `bc1qkha0hcl36vuujwcen6zrxme8s2kqjwen5703jj`\n<:fee_eth:913749231678930975> - `0x38471306529380a90045Fb4b63FF612F3A1E3437`\n<:fee_ltc:917264308218515526> - `Ldqtpytrp4PvezPKDuTPf3R2Xm5a42ZTb5`", inline=False)
-        embed.add_field(name="Note", value="Please send a screenshot/transaction ID after you pay the payment. When paying with Ethereum, you MUST cover the gas fee!", inline=False)
-        
-        await interaction.channel.send(embed=embed)
-        
-        time.sleep(2)
-        
-        embed = discord.Embed(title="Did you Receive the Payment?", color=maincolor)
-        
-        await interaction.channel.send("<@891449503276736512>", embed=embed, view=yesNo_First())
+        usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
 
-class yesNo_First(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-    @discord.ui.button(row=0, label='Yes', style=discord.ButtonStyle.green, custom_id="yesNoFirst1", disabled=False, emoji="<:mmbot_approve:863985290602479627>")
-    async def button_callback1(self, button, interaction):
-        if interaction.user.id != 891449503276736512:
-            return await interaction.response.defer()
-        
-        for child in self.children:
-            child.disabled = True
-        await interaction.message.edit(view=self)
-        
-        await interaction.response.defer()
-        
-        titl = interaction.message.embeds[0].title
-        if titl == "Did you Receive the Payment?":
-            msg = "If you are the **buyer**, send your payment/items to the seller."
-            tradetype = 2
-        else:
-            msg = "If you are the **buyer**, send your payment to the seller."
-            tradetype = 1
-        
-        embed = discord.Embed(title="Buyer", description=msg, color=maincolor)
-        embed.set_footer(text=f"Trade Type: {tradetype}")
-        
-        await interaction.channel.send(embed=embed, view=firstCont())
+        totalam = res.json()['amount']/100000000
+        useam = shorten(usdprice*totalam)
 
-    @discord.ui.button(row=0, label='No', style=discord.ButtonStyle.red, custom_id="yesNoFirst2", disabled=False, emoji="<:mmbot_deny:863985438503206922>")
-    async def button_callback2(self, button, interaction):
-        if interaction.user.id != 891449503276736512:
-            return await interaction.response.defer()
+        db = mysql.connector.connect(
+          host="remotemysql.com",
+          user="uDNB0NiyRu",
+          passwd="AAxYedadAw",
+          database="uDNB0NiyRu")
+        mycursor = db.cursor()
+        
+        mycursor.execute(f"UPDATE autocrypto_tickets_info SET has_paid=%s WHERE channel_id=%s", ("Yes", ctx.channel.id))
+        db.commit()
+        mycursor.close()
+        db.close()
+        
+        await interaction.message.reply(content=f"**The bot has sent `${useam}` | `{data[0][6]}` to `{addy}`**\nTransaction: https://blockchair.com/bitcoin/transaction/{txid}")
 
-        await interaction.response.defer()
+      @discord.ui.button(row=0, label="No", style=discord.ButtonStyle.red, custom_id="noitsnot", disabled=False)
+      async def button_callback2(self, button, interaction):
         
-        titl = interaction.message.embeds[0].title
-        if titl == "Did you Receive the Payment?":
-            msg = "The Payment has not been Received"
-            tradetype = 2
-        else:
-            msg = "The Items have not been Received"
-            tradetype = 1
+        await interaction.response.defer()          
         
-        embed = discord.Embed(title=msg, color=maincolor)
-        embed.set_footer(text=f"Trade Type: {tradetype}")
-        
-        await interaction.channel.send(embed=embed)
+        if interaction.user.id != data[0][4]:
+          return
 
-class firstCont(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-    @discord.ui.button(row=0, label='Continue', style=discord.ButtonStyle.grey, custom_id="firstCont1", disabled=False, emoji="<:mmbot_continue:881774548335349772>")
-    async def button_callback1(self, button, interaction):
-        if interaction.user.id != 891449503276736512:
-            return await interaction.response.defer()
-        
-        for child in self.children:
-            child.disabled = True
-        await interaction.message.edit(view=self)
-        
-        await interaction.response.defer()
-        
-        tradetype = interaction.message.embeds[0].footer.text
-        
-        if tradetype == "Trade Type: 1": # lims
-            
-            user = get_cookie()
-            session = requests.Session()
+        await interaction.message.delete()
+    
+    usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
+    useame = shorten(usdprice*data[0][6])
 
-            js = {'usernames': [user,],'excludeBannedUsers': False}
-            res = session.post('https://users.roblox.com/v1/usernames/users', data=js)
-            rbx_userID = res.json()['data'][0]['id']
-            get_avatar_0 = session.get(f"https://thumbnails.roblox.com/v1/users/avatar?userIds={rbx_userID}&size=720x720&format=Png&isCircular=false")
-            avatar_0 = get_avatar_0.json()["data"][0]["imageUrl"]
+    embed=discord.Embed(title="Are you sure that this is your address?", description=f"> By clicking \"Yes\", the bot will send `${useame}` | `{data[0][6]}` to that address.", color=MAINCOLOR)
+    await ctx.reply(embed=embed, view=IsThisYourAddy())
 
-            embed = discord.Embed(title="Middleman Account", description="After the **seller** has confirmed that they recieved the funds, send a trade for your items to the Middleman Account.", color=maincolor)
-            embed.set_thumbnail(url=avatar_0)
+    mycursor.close(); db.close()
 
-            await interaction.channel.send(embed=embed, view=secondContLims())
-        else:
-            
-            embed = discord.Embed(description="After the **seller** has confirmed that they recieved the funds/items, send your crypto address.", color=maincolor)
-            
-            await interaction.channel.send(embed=embed, view=secondContCrypto())
+class SellerOrBuyer(discord.ui.View):
+  def __init__(self):
+    super().__init__(timeout=None)
+  @discord.ui.button(row=0, label="Seller", style=discord.ButtonStyle.blurple, custom_id="imseller", disabled=False)
+  async def button_callback1(self, button, interaction):
+    
+    msgs = await interaction.channel.history(limit=None, oldest_first=True).flatten()
+    user = msgs[0].mentions[0]
 
-class secondContLims(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-        
-        user = get_cookie()
-        session = requests.Session()
-        js = {'usernames': [user,],'excludeBannedUsers': False}
-        res = session.post('https://users.roblox.com/v1/usernames/users', data=js)
-        rbx_userID = res.json()['data'][0]['id']
+    if interaction.user.id != user.id:
+      await interaction.response.defer()
+      return
 
-        self.add_item(discord.ui.Button(label="Trade Me", url=f"https://www.roblox.com/users/{rbx_userID}/trade"))
-    @discord.ui.button(row=0, label='Continue', style=discord.ButtonStyle.grey, custom_id="secondCont2", disabled=False, emoji="<:mmbot_continue:881774548335349772>")
-    async def button_callback1(self, button, interaction):
-        if interaction.user.id != 891449503276736512:
-            return await interaction.response.defer()
-        
-        for child in self.children:
-            child.disabled = True
-        await interaction.message.edit(view=self)
-        
-        await interaction.response.defer()
-        
-        embed = discord.Embed(title="Did the buyer receive their Items?", color=maincolor)
-        await interaction.channel.send("<@891449503276736512>", embed=embed, view=yesNo_Second())
+    for child in self.children:
+      child.disabled = True
+    await interaction.message.edit(view=self)
 
-class secondContCrypto(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-    @discord.ui.button(row=0, label='Continue', style=discord.ButtonStyle.grey, custom_id="secondCrypto3", disabled=False, emoji="<:mmbot_continue:881774548335349772>")
-    async def button_callback1(self, button, interaction):
-        if interaction.user.id != 891449503276736512:
-            return await interaction.response.defer()
-        
-        for child in self.children:
-            child.disabled = True
-        await interaction.message.edit(view=self)
-        
-        await interaction.response.defer()
+    await interaction.response.defer()
 
-        embed = discord.Embed(title="Did the buyer receive their Payment?", color=maincolor)
-        await interaction.channel.send("<@891449503276736512>", embed=embed, view=yesNo_Second())
-        
-class yesNo_Second(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-    @discord.ui.button(row=0, label='Yes', style=discord.ButtonStyle.green, custom_id="yesNoSecond1", disabled=False, emoji="<:mmbot_approve:863985290602479627>")
-    async def button_callback1(self, button, interaction):
-        if interaction.user.id != 891449503276736512:
-            return await interaction.response.defer()
-        
-        for child in self.children:
-            child.disabled = True
-        await interaction.message.edit(view=self)
-        
-        await interaction.response.defer()
-        
-        embed = discord.Embed(title="Vouch", description="Thank you for using **Chase's Middleman Service!**\nIf you were satisfied, be sure to leave a vouch in <#825868273643159563>", color=maincolor)        
-        await interaction.channel.send(embed=embed)
+    db = mysql.connector.connect(
+      host="remotemysql.com",
+      user="uDNB0NiyRu",
+      passwd="AAxYedadAw",
+      database="uDNB0NiyRu")
+    mycursor = db.cursor()
 
-    @discord.ui.button(row=0, label='No', style=discord.ButtonStyle.red, custom_id="yesNoSecond2", disabled=False, emoji="<:mmbot_deny:863985438503206922>")
-    async def button_callback2(self, button, interaction):
-        if interaction.user.id != 891449503276736512:
-            return await interaction.response.defer()
+    mycursor.execute(f"UPDATE autocrypto_tickets_info SET trader_seller_id=%s, owner_trader_type=%s WHERE channel_id=%s", (interaction.user.id, "seller", interaction.channel.id))
+    db.commit()
+    embed = discord.Embed(title="What's the CryptoCurrency type?", description="Select the coin that you're giving to your trader.", color=MAINCOLOR)
+    embed.set_footer(text="Selected: ")
+    await interaction.channel.send(embed=embed, view=CryptoType())
+    mycursor.close()
+    db.close()
 
-        await interaction.response.defer()
+    editedembed = interaction.message.embeds[0]
+    editedembed.set_footer(text="Selected: Seller")
+    await interaction.message.edit(embed=editedembed)
+
+  @discord.ui.button(row=0, label="Buyer", style=discord.ButtonStyle.blurple, custom_id="imbuyer", disabled=False)
+  async def button_callback2(self, button, interaction):
+    msgs = await interaction.channel.history(limit=None, oldest_first=True).flatten()
+    user = msgs[0].mentions[0]
+
+    if interaction.user.id != user.id:
+      await interaction.response.defer()
+      return
+
+    for child in self.children:
+      child.disabled = True
+    await interaction.message.edit(view=self)
+
+    await interaction.response.defer()
+
+    db = mysql.connector.connect(
+      host="remotemysql.com",
+      user="uDNB0NiyRu",
+      passwd="AAxYedadAw",
+      database="uDNB0NiyRu")
+    mycursor = db.cursor()
+
+    mycursor.execute(f"UPDATE autocrypto_tickets_info SET trader_receiver_id=%s, owner_trader_type=%s WHERE channel_id=%s", (interaction.user.id, "buyer", interaction.channel.id))
+    db.commit()
+    embed = discord.Embed(title="What's the CryptoCurrency type?", description="Select the coin that you're going to receive from your trader.", color=MAINCOLOR)
+    embed.set_footer(text="Selected: ")
+    await interaction.channel.send(embed=embed, view=CryptoType())
+    mycursor.close()
+    db.close()
+
+    editedembed = interaction.message.embeds[0]
+    editedembed.set_footer(text="Selected: Buyer")
+    await interaction.message.edit(embed=editedembed)
+
+class CryptoType(discord.ui.View):
+  def __init__(self):
+    super().__init__(timeout=None)
+  @discord.ui.button(row=0, label="BTC", style=discord.ButtonStyle.blurple, custom_id="btctype", disabled=False, emoji="<:fee_bitcoin:870211550722543707>")
+  async def button_callback1(self, button, interaction):
+    
+    msgs = await interaction.channel.history(limit=None, oldest_first=True).flatten()
+    user = msgs[0].mentions[0]
+
+    if interaction.user.id != user.id:
+      await interaction.response.defer()
+      return
+
+    for child in self.children:
+      child.disabled = True
+    await interaction.message.edit(view=self)
+
+    await interaction.response.defer()
+
+    db = mysql.connector.connect(
+      host="remotemysql.com",
+      user="uDNB0NiyRu",
+      passwd="AAxYedadAw",
+      database="uDNB0NiyRu")
+    mycursor = db.cursor()
+
+    mycursor.execute(f"UPDATE autocrypto_tickets_info SET crypto_type=%s WHERE channel_id=%s", ("BTC", interaction.channel.id))
+    db.commit()
+    embed = discord.Embed(title="How much is the deal in USD?", description="Reply with numbers.", color=MAINCOLOR)
+    await interaction.channel.send(embed=embed)
+    mycursor.close()
+    db.close()
+
+    editedembed = interaction.message.embeds[0]
+    editedembed.set_footer(text="Selected: BTC")
+    await interaction.message.edit(embed=editedembed)
+
+    await interaction.channel.set_permissions(user, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
+
+  @discord.ui.button(row=0, label="ETH", style=discord.ButtonStyle.blurple, custom_id="ethtype", disabled=True, emoji="<:fee_eth:913749231678930975>")
+  async def button_callback2(self, button, interaction):
+    print(1)
+
+  @discord.ui.button(row=0, label="LTC", style=discord.ButtonStyle.blurple, custom_id="ltctype", disabled=True, emoji="<:fee_ltc:917264308218515526>")
+  async def button_callback3(self, button, interaction):
+    print(1)
 
 bot.run(TOKEN)
