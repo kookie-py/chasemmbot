@@ -125,11 +125,10 @@ async def tx_checker():
               if skiptx == "No":
                 embede = discord.Embed(title="Transaction/s Confirmed", description="The transaction/s have reached 1 confirmation, you may continue with your deal now.", color=SUCCCOLOR)
                 embede.add_field(name="Transaction/s Hash", value=txString, inline=False)
-                c = bot.get_channel(channel_id)
                 await c.send(f"<@{trader_receiver_id}> You may give your trader the promised items/money.\n\n<@{trader_seller_id}> Once your trader gives you your stuff, use the `$confirm` command to let them withdraw their crypto.", embed=embede)
               elif skiptx == "Yes":
                 c = bot.get_channel(channel_id)
-                await c.send(f"<@{trader_receiver_id}> You can now withdraw your crypto.\nUse the command `$redeem addy`")
+                await c.send(f"<@{trader_receiver_id}> The transaction/s have reached 1 confirmation.")
       except IndexError:
         pass
       except ValueError:
