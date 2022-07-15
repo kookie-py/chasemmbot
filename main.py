@@ -107,7 +107,7 @@ async def tx_checker():
           channel_id = int(ticketdata['channel_id'])
           skiptx = str(ticketdata['skip_tx'])
           if (trade_stated == "Yes") and (trader_added == "Yes") and (ticket_status == "Active") and (hold_address != "No") and (crypto_received == "No") and (payment_detected == "Yes"):
-            res = session.get(f"https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/history?btc&q=item_type:receipt,address:{hold_address}").json()
+            res = session.get(f"https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/history?currency=btc&q=item_type:receipt,address:{hold_address}").json()
             txString = ""
             unconf = 0
             for i in res['items']:
@@ -2108,7 +2108,7 @@ class PasteAddress(discord.ui.View):
 
     address = ticketdata['hold_address']
 
-    res = session.get(f"https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/history?btc&q=item_type:receipt,address:{address}").json()
+    res = session.get(f"https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/history?currency=btc&q=item_type:receipt,address:{address}").json()
     totalbtc = 0
     if len(res['items']) == 0:
       await interaction.message.edit(view=PasteAddress())
