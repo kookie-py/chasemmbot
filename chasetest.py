@@ -29,7 +29,6 @@ import requests
 import csv
 import arrow
 import math
-import mysql.connector
 import humanfriendly
 import DiscordUtils
 import difflib
