@@ -905,7 +905,7 @@ async def on_message(message):
 
                 btc = getWholeFloat(btc)
 
-                embed2 = discord.Embed(title="Payment Information",description=f"The total USD includes a 0.5% fee of: **${fee}**\nClick the \"Paid\" button once you've sent the payment to the address.", color=MAINCOLOR)
+                embed2 = discord.Embed(title="Payment Information",description=f"The total USD includes a 0.5% fee of: **${shorten(fee)}**\nClick the \"Paid\" button once you've sent the payment to the address.", color=MAINCOLOR)
                 #embed2.set_thumbnail(url=f"https://chart.googleapis.com/chart?chs=500x500&cht=qr&chl={address}")
                 embed2.add_field(name="USD", value=f"${totalusd}", inline=True)
                 embed2.add_field(name="BTC", value=f"{btc}", inline=True)
@@ -1843,7 +1843,7 @@ class Use_MMPass(discord.ui.View):
     res = session.post(f'https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/addresses', json=json_data)
     address = res.json()['address']
     btc = getWholeFloat(btc)
-    embed2 = discord.Embed(title="Payment Information",description=f"The total USD includes a 0.5% fee of: **${fee}**\nClick the \"Paid\" button once you've sent the payment to the address.", color=MAINCOLOR)
+    embed2 = discord.Embed(title="Payment Information",description=f"The total USD includes a 0.5% fee of: **${shorten(fee)}**\nClick the \"Paid\" button once you've sent the payment to the address.", color=MAINCOLOR)
     #embed2.set_thumbnail(url=f"https://chart.googleapis.com/chart?chs=500x500&cht=qr&chl={address}")
     embed2.add_field(name="USD", value=f"${totalusd}", inline=True)
     embed2.add_field(name="BTC", value=f"{btc}", inline=True)
