@@ -1879,7 +1879,7 @@ async def off(ctx):
       if msg.embeds:
         if len(msg.embeds) == 2:
           if msg.components:
-            if msg.components[0].children[0].custom_id == "auto_crypto_ticket":
+            if msg.components[0].children[0].custom_id == "auto_crypto_ticket" or msg.components[0].children[0].custom_id == "auto_crypto_tickettt":
               newmsg = msg
     if newmsg == None:
       return
@@ -1896,7 +1896,7 @@ async def on(ctx):
       if msg.embeds:
         if len(msg.embeds) == 2:
           if msg.components:
-            if msg.components[0].children[0].custom_id == "auto_crypto_ticket":
+            if msg.components[0].children[0].custom_id == "auto_crypto_ticket" or msg.components[0].children[0].custom_id == "auto_crypto_tickettt":
               newmsg = msg
     if newmsg == None:
       return
