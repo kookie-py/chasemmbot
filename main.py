@@ -118,7 +118,7 @@ async def tx_checker():
                 status = "<a:checkmarktick:996838559766020266> Confirmed <a:checkmarktick:996838559766020266>"
               else:
                 status = "<a:load:992127235265925171> Unconfirmed <a:load:992127235265925171>"
-              txString += f"> ID: [Click Here](https://blockchair.com/bitcoin/transaction/`{i['id']})\n> Status: {status}\n\n"
+              txString += f"> ID: [Click Here](https://blockchair.com/bitcoin/transaction/{i['id']})\n> Status: {status}\n\n"
             if unconf == 0:
               ticketdata['crypto_received'] = "Yes"
               await ticketdata_msg.edit(ticketdata)
@@ -2166,7 +2166,7 @@ class PasteAddress(discord.ui.View):
           status = "<a:load:992127235265925171> Unconfirmed <a:load:992127235265925171>"
           unconf += 1
 
-        txString += f"> ID: [Click Here](https://blockchair.com/bitcoin/transaction/`{i['id']})\n> Status: {status}\n\n"
+        txString += f"> ID: [Click Here](https://blockchair.com/bitcoin/transaction/{i['id']})\n> Status: {status}\n\n"
 
       await interaction.channel.send("<a:checkmarktick:996838559766020266> Payment was received <a:checkmarktick:996838559766020266>")
 
