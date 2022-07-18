@@ -2196,6 +2196,9 @@ class PasteAddress(discord.ui.View):
         embad.add_field(name="Users", value="`None`", inline=False)
         await interaction.channel.send("Please wait until the transaction/s reaches 1 confirmation.", embed=embad, view=SkipTx())
 
+      if unconf == 0:
+        await interaction.channel.send(f"<@{ticketdata['trader_receiver_id']}> You may give your trader the promised items/money.\n\n<@{ticketdata['trader_seller_id']}> Once your trader gives you your stuff, use the `$confirm` command to let them withdraw their crypto.", embed=embede)
+
     else:
       req_usd_amount = promised_usd_amount-received_usd_amount
       req_btc_amount = shorten_btc(req_usd_amount/usdprice)
