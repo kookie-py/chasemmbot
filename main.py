@@ -2396,6 +2396,11 @@ async def redeem(ctx, addy=None):
         
         await interaction.message.reply(content=f"**The bot has sent `${useam}` | `{shorten_btc(float(ticketdata['trade_amount_cry']))}` to `{addy}`**\nTransaction: https://blockchair.com/bitcoin/transaction/{txid}")
 
+        newem = discord.Embed(title="Vouching", description=f"Thanks for using **{interaction.guild.name}**!\nIf you were satisfied, please vouch in <#825868273643159563>")
+        newem.add_field(name="Example", value="Vouch <@891449503276736512> $420")
+
+        await interaction.channel.send(content=f"<@{ticketdata['trader_receiver_id']}> <@{ticketdata['trader_seller_id']}>", embed=newem)
+
       @discord.ui.button(row=0, label="No", style=discord.ButtonStyle.red, custom_id="noitsnot", disabled=False)
       async def button_callback2(self, button, interaction):
         
