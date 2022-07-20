@@ -77,6 +77,9 @@ def shorten_btc(number):
 def addDots(number):
   return ("{:,}".format(number))
 
+def numberToFloat(number):
+  return format(float(number), '.2f')
+
 def getWholeFloat(number):
   l = len(str(number))-1
   p = f".{l}f"
@@ -905,9 +908,9 @@ async def on_message(message):
 
                 btc = getWholeFloat(btc)
 
-                embed2 = discord.Embed(title="Payment Information",description=f"The total USD includes a 0.5% fee of: **${shorten(fee)}**\nClick the \"Paid\" button once you've sent the payment to the address.", color=MAINCOLOR)
+                embed2 = discord.Embed(title="Payment Information",description=f"The total USD includes a 0.5% fee of: **${numberToFloat(fee)}**\nClick the \"Paid\" button once you've sent the payment to the address.", color=MAINCOLOR)
                 #embed2.set_thumbnail(url=f"https://chart.googleapis.com/chart?chs=500x500&cht=qr&chl={address}")
-                embed2.add_field(name="USD", value=f"${totalusd}", inline=True)
+                embed2.add_field(name="USD", value=f"${numberToFloat(totalusd)}", inline=True)
                 embed2.add_field(name="BTC", value=f"{btc}", inline=True)
                 embed2.add_field(name="Payment Address", value=f"{address}", inline=False)
                 embed2.set_footer(text=f"1 BTC = ${usdprice}")
@@ -2404,7 +2407,7 @@ async def redeem(ctx, addy=None):
       @discord.ui.button(row=0, label="No", style=discord.ButtonStyle.red, custom_id="noitsnot", disabled=False)
       async def button_callback2(self, button, interaction):
         
-        await interaction.response.defer()          
+        await interaction.response.defer()
         
         currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
         dbchannel_id = int(currentticket[0].content.split("||")[1])
