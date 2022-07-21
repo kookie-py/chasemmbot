@@ -922,8 +922,10 @@ async def on_message(message):
                 ticketdata['ticket_status'] = "Active"
                 await ticketdata_msg.edit(ticketdata)
                 return
-              except ValueError or AttributeError:
-                return await message.reply("User wasn't found, double check the username/ID and make sure the user is in this server!")            
+              except ValueError:
+                await message.reply(embed=discord.Embed(description="***User wasn't found, double check the username/ID and make sure the user is in this server!***", color=0xed4245))
+              except AttributeError:
+                await message.reply(embed=discord.Embed(description="***User wasn't found, double check the username/ID and make sure the user is in this server!***", color=0xed4245))
 
   #await bot.process_commands(message)
 
