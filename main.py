@@ -364,7 +364,7 @@ class Closed_Msgs(discord.ui.View):
       logembed.add_field(name=f"Category", value=f"{interaction.channel.category.name} | {interaction.channel.category.id}", inline=False)
     logembed.set_author(name=f"Action: Ticket Reopened", icon_url=f"{interaction.user.display_avatar.url}")
     await ticketlogs.send(embed=logembed)
-    ticketdata['ticket_status'] = "Open"
+    ticketdata['ticket_status'] = "Active"
     ticketdata['closed_msg_id'] = 0
     await ticketdata_msg1.edit(ticketdata)
 
@@ -597,7 +597,7 @@ async def reopen(ctx):
     if len(ticketdata) == 0:
       return await ctx.reply("This channel isn't a ticket.")
                       
-    if str(ticketdata['ticket_status']) == "Open":
+    if str(ticketdata['ticket_status']) == "Active":
       await ctx.reply("*Ticket is not closed!*")
       return
     try:
