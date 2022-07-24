@@ -2198,7 +2198,7 @@ class PasteAddress(discord.ui.View):
       await interaction.channel.send(embed=embede)
 
       if unconf != 0:
-        embad = discord.Embed(title="Do you want to skip the transaction check?", description="Clicking \"Yes\" will skip the transaction check part and contiune to the next step, which means that the bot won't check whether if the transaction has reached 1 confirmation or not and notify you about it. `(both traders are required to click this)`", color=MAINCOLOR)
+        embad = discord.Embed(title="Do you want to skip the transaction check?", description="Clicking \"Yes\" will skip the transaction check part and contiune to the next step. `(both traders are required to click this)`", color=MAINCOLOR)
         embad.add_field(name="Users", value="`None`", inline=False)
         await interaction.channel.send("Please wait until the transaction/s reaches 1 confirmation.", embed=embad, view=SkipTx())
 
@@ -2511,7 +2511,7 @@ def find_between( s, first, last ):
 @bot.command()
 async def test1(ctx):
   if ctx.author.id == 358594990982561792:
-    embad = discord.Embed(title="Do you want to skip the transaction?", description="Clicking \"Yes\" will skip the checking transaction part and contiune to the next step, which means that the bot won't check whether if the transaction has reached 1 confirmation or not and notify you about it. `(both traders are required to click this)`")
+    embad = discord.Embed(title="Do you want to skip the transaction?", description="Clicking \"Yes\" will skip the checking transaction part and contiune to the next step. `(both traders are required to click this)`")
     embad.add_field(name="Users", value="`None`", inline=False)
     await ctx.send("Please wait until the transaction/s reaches 1 confirmation.", embed=embad, view=SkipTx())
 
