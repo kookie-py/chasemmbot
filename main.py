@@ -86,6 +86,9 @@ def getWholeFloat(number):
   number = format(number, p)
   return number
 
+def perChaseage(part, whole):
+  return round(100 * float(part)/float(whole), 2)
+
 @tasks.loop(seconds=10)
 async def tx_checker():
     global session
@@ -137,9 +140,6 @@ async def tx_checker():
         pass
       except ValueError:
         pass
-
-def perChaseage(part, whole):
-  return round(100 * float(part)/float(whole), 2)
 
 TOKEN = "OTQxMTk1NTMyODU1MDQyMDc4.G_fMBP.FtXosi1p2R8hlvKPutNjwmBeC71Fjxvare8Y4o"
 
@@ -2536,6 +2536,9 @@ class SkipTx(discord.ui.View):
       return
 
     await interaction.response.defer()
+
+    if ticketdata['crypto_received'] == "Yes":
+      return
 
     msg_embed = interaction.message.embeds[0]
     field = msg_embed.fields[0]
