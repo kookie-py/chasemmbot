@@ -2117,18 +2117,14 @@ class PasteAddress(discord.ui.View):
     ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
     ticketdata = ast.literal_eval(ticketdata_msg.content)
 
+    await interaction.response.defer()
+
     if interaction.user.id != int(ticketdata['trader_seller_id']):
-      await interaction.response.defer()
       return
 
     for child in self.children:
       child.disabled = True
     await interaction.message.edit(view=self)
-
-    try:
-      await interaction.response.defer()
-    except NotFound:
-      await interaction.message.edit(view=PasteAddress())
 
     address = ticketdata['hold_address']
 
@@ -2258,14 +2254,14 @@ async def confirm(ctx):
         super().__init__(timeout=None)
       @discord.ui.button(row=0, label="Yes", style=discord.ButtonStyle.green, custom_id="lolYes", disabled=False)
       async def button_callback1(self, button, interaction):
-        
-        await interaction.response.defer()
-        
+                
         currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
         dbchannel_id = int(currentticket[0].content.split("||")[1])
         dbchannel = bot.get_channel(dbchannel_id)
         ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
         ticketdata = ast.literal_eval(ticketdata_msg.content)
+
+        await interaction.response.defer()
 
         if interaction.user.id != int(ticketdata['trader_seller_id']):
           return
@@ -2288,14 +2284,14 @@ async def confirm(ctx):
         
       @discord.ui.button(row=0, label="No", style=discord.ButtonStyle.red, custom_id="Nopee", disabled=False)
       async def button_callback2(self, button, interaction):
-        
-        await interaction.response.defer()          
-        
+                
         currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
         dbchannel_id = int(currentticket[0].content.split("||")[1])
         dbchannel = bot.get_channel(dbchannel_id)
         ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
         ticketdata = ast.literal_eval(ticketdata_msg.content)
+
+        await interaction.response.defer()
 
         if interaction.user.id != int(ticketdata['trader_seller_id']):
           return
@@ -2356,14 +2352,14 @@ async def redeem(ctx, addy=None):
         super().__init__(timeout=None)
       @discord.ui.button(row=0, label="Yes", style=discord.ButtonStyle.green, custom_id="yesMyAddy", disabled=False)
       async def button_callback1(self, button, interaction):
-        
-        await interaction.response.defer()
-        
+                
         currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
         dbchannel_id = int(currentticket[0].content.split("||")[1])
         dbchannel = bot.get_channel(dbchannel_id)
         ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
         ticketdata = ast.literal_eval(ticketdata_msg.content)
+
+        await interaction.response.defer()
 
         if interaction.user.id != int(ticketdata['trader_receiver_id']):
           return
@@ -2412,14 +2408,14 @@ async def redeem(ctx, addy=None):
 
       @discord.ui.button(row=0, label="No", style=discord.ButtonStyle.red, custom_id="noitsnot", disabled=False)
       async def button_callback2(self, button, interaction):
-        
-        await interaction.response.defer()
-        
+                
         currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
         dbchannel_id = int(currentticket[0].content.split("||")[1])
         dbchannel = bot.get_channel(dbchannel_id)
         ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
         ticketdata = ast.literal_eval(ticketdata_msg.content)
+
+        await interaction.response.defer()
 
         if interaction.user.id != int(ticketdata['trader_receiver_id']):
           return
@@ -2442,15 +2438,15 @@ class SellerOrBuyer(discord.ui.View):
     msgs = await interaction.channel.history(limit=None, oldest_first=True).flatten()
     user = msgs[0].mentions[0]
 
+    await interaction.response.defer()
+
     if interaction.user.id != user.id:
-      await interaction.response.defer()
       return
 
     for child in self.children:
       child.disabled = True
     await interaction.message.edit(view=self)
 
-    await interaction.response.defer()
 
     currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
     dbchannel_id = int(currentticket[0].content.split("||")[1])
@@ -2475,15 +2471,14 @@ class SellerOrBuyer(discord.ui.View):
     msgs = await interaction.channel.history(limit=None, oldest_first=True).flatten()
     user = msgs[0].mentions[0]
 
+    await interaction.response.defer()
+
     if interaction.user.id != user.id:
-      await interaction.response.defer()
       return
 
     for child in self.children:
       child.disabled = True
     await interaction.message.edit(view=self)
-
-    await interaction.response.defer()
 
     currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
     dbchannel_id = int(currentticket[0].content.split("||")[1])
@@ -2518,6 +2513,12 @@ async def test1(ctx):
     embad.add_field(name="Users", value="`None`", inline=False)
     await ctx.send("Please wait until the transaction/s reaches 1 confirmation.", embed=embad, view=SkipTx())
 
+@bot.command()
+async def intr(ctx, msgid):
+  if ctx.author.id == 358594990982561792:
+    msg = await ctx.channel.fetch_message(int(msgid))
+    await msg.edit(view=PasteAddress())
+
 class SkipTx(discord.ui.View):
   def __init__(self):
     super().__init__(timeout=None)
@@ -2534,11 +2535,10 @@ class SkipTx(discord.ui.View):
     trader_ids.append(int(ticketdata['trader_seller_id']))
     trader_ids.append(int(ticketdata['trader_receiver_id']))
 
-    if interaction.user.id not in trader_ids:
-      await interaction.response.defer()
-      return
-
     await interaction.response.defer()
+
+    if interaction.user.id not in trader_ids:
+      return
 
     if ticketdata['crypto_received'] == "Yes":
       return
@@ -2577,15 +2577,14 @@ class CryptoType(discord.ui.View):
     msgs = await interaction.channel.history(limit=None, oldest_first=True).flatten()
     user = msgs[0].mentions[0]
 
+    await interaction.response.defer()
+
     if interaction.user.id != user.id:
-      await interaction.response.defer()
       return
 
     for child in self.children:
       child.disabled = True
     await interaction.message.edit(view=self)
-
-    await interaction.response.defer()
 
     currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
     dbchannel_id = int(currentticket[0].content.split("||")[1])
