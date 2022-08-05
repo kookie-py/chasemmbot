@@ -2125,7 +2125,10 @@ class PasteAddress(discord.ui.View):
       child.disabled = True
     await interaction.message.edit(view=self)
 
-    await interaction.response.defer()
+    try:
+      await interaction.response.defer()
+    except NotFound:
+      await interaction.message.edit(view=PasteAddress())
 
     address = ticketdata['hold_address']
 
