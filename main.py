@@ -99,7 +99,10 @@ async def tx_checker():
         channelcheck = int(cha.name.split('-')[1])
         if cha.name.split("-")[2] == "auto":
           dbchannel = cha
-          ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+          try:
+            ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
+          except NotFound:
+            return
           ticketdata = ast.literal_eval(ticketdata_msg.content)
 
           trade_stated = ticketdata['trade_stated']
