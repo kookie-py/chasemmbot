@@ -53,6 +53,8 @@ SUCCCOLOR = 0x57f287
 MAINCOLOR = 0xf3f3f3
 grey = 0x99AAB5
 redcolor = 0xed4245
+warningcolor = 0xFF3838
+withdrawcolor = 0x7BFF34
 
 #Username: XPJ9qhFktO
 #Database name: XPJ9qhFktO
@@ -111,8 +113,8 @@ async def tx_checker():
           hold_address = ticketdata['hold_address']
           crypto_received = ticketdata['crypto_received']
           payment_detected = ticketdata['payment_detected']
-          trader_seller_id = int(ticketdata['trader_seller_id'])
-          trader_receiver_id = int(ticketdata['trader_receiver_id'])
+          guy_who_gives_btc = int(ticketdata['guy_who_gives_btc'])
+          guy_who_gets_btc = int(ticketdata['guy_who_gets_btc'])
           channel_id = int(ticketdata['channel_id'])
           skiptx = str(ticketdata['skip_tx'])
           if (trade_stated == "Yes") and (trader_added == "Yes") and (ticket_status == "Active") and (hold_address != "No") and (crypto_received == "No") and (payment_detected == "Yes"):
@@ -127,22 +129,24 @@ async def tx_checker():
                 status = "<a:checkmarktick:996838559766020266> Confirmed <a:checkmarktick:996838559766020266>"
               else:
                 status = "<a:load:992127235265925171> Unconfirmed <a:load:992127235265925171>"
-              txString += f"> ID: [Click Here](https://blockchair.com/bitcoin/transaction/{i['id']})\n> Status: {status}\n\n"
+              txString += f"> [Click Here](https://blockchair.com/bitcoin/transaction/{i['id']})\n"
             if unconf == 0:
               ticketdata['crypto_received'] = "Yes"
               await ticketdata_msg.edit(ticketdata)
               if skiptx == "No":
-                embede = discord.Embed(title="Transaction/s Confirmed", description="The transaction/s have reached 1 confirmation, you may continue with your deal now.", color=SUCCCOLOR)
-                embede.add_field(name="Transaction/s Hash", value=txString, inline=False)
                 c = bot.get_channel(channel_id)
-                await c.send(f"<@{trader_receiver_id}> You may give your trader the promised items/money.\n\n<@{trader_seller_id}> Once your trader gives you your stuff, use the `$confirm` command to let them withdraw their crypto.", embed=embede)
+                embas = discord.Embed(title="Transaction Confirmed", description="The transaction has reached **1 confirmation!** <a:tx_confirmed:1009354585560846386>", color=SUCCCOLOR)
+                embas.add_field(name="Transaction Hash", value=txString, inline=True)
+                embas.add_field(name="Current Status", value="Confirmed", inline=True)
+                await c.send(f"**Seller**\n<@{ticketdata['guy_who_gets_btc']}>, you may give the promised money/items to the other dealer.\n\n**Buyer**\n<@{ticketdata['guy_who_gives_btc']}>, once you receive the payment/items from seller, use the `$confirm` command to allow them to withdraw their cryptocurrency.", embed=embas)
               elif skiptx == "Yes":
                 c = bot.get_channel(channel_id)
-                await c.send(f"<@{trader_receiver_id}> The transaction/s have reached 1 confirmation.")
+                await c.send(f"<@{guy_who_gets_btc}> The transaction has reached 1 confirmation.")
       except IndexError:
         pass
       except ValueError:
         pass
+
 
 TOKEN = "OTQxMTk1NTMyODU1MDQyMDc4.G_fMBP.FtXosi1p2R8hlvKPutNjwmBeC71Fjxvare8Y4o"
 
@@ -816,9 +820,10 @@ async def on_message(message):
                 ticketdata['fee_amount_usd'] = float(fee)
                 await ticketdata_msg.edit(ticketdata)
 
-                embed = discord.Embed(title="Who's your trader?", description="Type either their Discord ID, full username or mention.\n\n`do not include @ if you aren't able to ping your trader.`", color=MAINCOLOR)
+                embed = discord.Embed(title="Who are you dealing with?", description="Type either their ID, Username, or mention them.", color=MAINCOLOR)
+                embed.add_field(name="Example", value="891449503276736512 / chase#6969 / <@891449503276736512>", inline=True)
+                embed.add_field(name="Warning", value="Do not include @ if you cannot ping the user you are trading.", inline=True)
                 await message.channel.send(embed=embed)
-
                 return
 
       if (ticketdata['trader_added'] == "No"): # Who's your trader? if trader wasn't added
@@ -851,7 +856,7 @@ async def on_message(message):
                   return await message.reply(f"Whoops! {user.mention} is blacklisted from using this server's mm service :(")
                 
                 await message.channel.set_permissions(user, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
-                await message.reply(f"{user.mention}", embed=discord.Embed(description=f'***{user.mention} was added to the ticket {message.channel.mention}***', color=SUCCCOLOR))
+                await message.reply(f"{user.mention}", embed=discord.Embed(title="Member Added", description=f'{user.mention} has been added to the ticket!', color=MAINCOLOR))
                 
                 ticketdata_msg2 = await dbchannel.history(limit=2, oldest_first=True).flatten();ticketdata_msg2=ticketdata_msg2[1]
                 ticketdata2 = ast.literal_eval(ticketdata_msg2.content)
@@ -859,12 +864,12 @@ async def on_message(message):
                 ticketdata2.append({"user_id": user.id, "channel_id": message.channel.id})
                 await ticketdata_msg2.edit(ticketdata2)
 
-                if ticketdata['owner_trader_type'] == "seller":
+                if ticketdata['owner_trader_type'] == "seller": # receives the crypto
                   ticketdata['trader_added'] = "Yes"
-                  ticketdata['trader_receiver_id'] = user.id
-                elif ticketdata['owner_trader_type'] == "buyer":
+                  ticketdata['guy_who_gives_btc'] = user.id
+                elif ticketdata['owner_trader_type'] == "buyer": # gives crypto to bot
                   ticketdata['trader_added'] = "Yes"
-                  ticketdata['trader_seller_id'] = user.id
+                  ticketdata['guy_who_gets_btc'] = user.id
                 await ticketdata_msg.edit(ticketdata)
 
                 logembed = discord.Embed(description=f"Author: **{message.author.name}#{message.author.discriminator}** | ID: {message.author.id}\nTicket: **{message.channel.name}** | ID: {message.channel.id}\nAction: **Added {user.name}#{user.discriminator} | ID: {user.id}**", color=0x66BB6A)
@@ -912,14 +917,13 @@ async def on_message(message):
 
                 btc = getWholeFloat(btc)
 
-                embed2 = discord.Embed(title="Payment Information",description=f"The total USD includes a 0.5% fee of: **${numberToFloat(fee)}**\nClick the \"Paid\" button once you've sent the payment to the address.", color=MAINCOLOR)
-                #embed2.set_thumbnail(url=f"https://chart.googleapis.com/chart?chs=500x500&cht=qr&chl={address}")
-                embed2.add_field(name="USD", value=f"${numberToFloat(totalusd)}", inline=True)
-                embed2.add_field(name="BTC", value=f"{btc}", inline=True)
-                embed2.add_field(name="Payment Address", value=f"{address}", inline=False)
-                embed2.set_footer(text=f"1 BTC = ${usdprice}")
+                embed2 = discord.Embed(title="Payment Information",description=f"The total USD includes a 0.5% fee of: **${numberToFloat(fee)}**\nMake sure to select the **Paid** button once you have sent the payment.", color=MAINCOLOR)
+                embed2.add_field(name="USD Amount", value=f"${numberToFloat(totalusd)}", inline=True)
+                embed2.add_field(name="Crypto Amount (BTC)", value=f"{btc}", inline=True)
+                embed2.add_field(name="Payment Address", value=f"```{address}```", inline=False)
+                embed2.set_footer(text=f"Price = ${usdprice}")
 
-                await message.channel.send(f"<@{ticketdata['trader_seller_id']}> Send the payment along with the fee to the following address.", embed=embed2, view=PasteAddress())
+                await message.channel.send(f"<@{ticketdata['guy_who_gives_btc']}> Send the payment to the following address!", embed=embed2, view=PasteAddress())
 
                 ticketdata['trade_stated'] = "Yes"
                 ticketdata['hold_address'] = address
@@ -1801,13 +1805,12 @@ class Use_MMPass(discord.ui.View):
     res = session.post(f'https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/addresses', json=json_data)
     address = res.json()['address']
     btc = getWholeFloat(btc)
-    embed2 = discord.Embed(title="Payment Information",description=f"Click the \"Paid\" button once you've sent the payment to the address.", color=MAINCOLOR)
-    #embed2.set_thumbnail(url=f"https://chart.googleapis.com/chart?chs=500x500&cht=qr&chl={address}")
-    embed2.add_field(name="USD", value=f"${totalusd}", inline=True)
-    embed2.add_field(name="BTC", value=f"{btc}", inline=True)
-    embed2.add_field(name="Payment Address", value=f"{address}", inline=False)
-    embed2.set_footer(text=f"1 BTC = ${usdprice}")
-    await interaction.channel.send(f"<@{ticketdata['trader_seller_id']}> Send the payment to the following address.", embed=embed2, view=PasteAddress())
+    embed2 = discord.Embed(title="Payment Information",description=f"The total USD includes a 0.5% fee of: **${numberToFloat(fee)}**\nMake sure to select the **Paid** button once you have sent the payment.", color=MAINCOLOR)
+    embed2.add_field(name="USD Amount", value=f"${numberToFloat(totalusd)}", inline=True)
+    embed2.add_field(name="Crypto Amount (BTC)", value=f"{btc}", inline=True)
+    embed2.add_field(name="Payment Address", value=f"```{address}```", inline=False)
+    embed2.set_footer(text=f"Price = ${usdprice}")
+    await interaction.channel.send(f"<@{ticketdata['guy_who_gives_btc']}> Send the payment to the following address!", embed=embed2, view=PasteAddress())
     ticketdata['trade_stated'] = "Yes"
     ticketdata['hold_address'] = address
     ticketdata['ticket_status'] = "Active"
@@ -1852,13 +1855,12 @@ class Use_MMPass(discord.ui.View):
     res = session.post(f'https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/addresses', json=json_data)
     address = res.json()['address']
     btc = getWholeFloat(btc)
-    embed2 = discord.Embed(title="Payment Information",description=f"The total USD includes a 0.5% fee of: **${shorten(fee)}**\nClick the \"Paid\" button once you've sent the payment to the address.", color=MAINCOLOR)
-    #embed2.set_thumbnail(url=f"https://chart.googleapis.com/chart?chs=500x500&cht=qr&chl={address}")
-    embed2.add_field(name="USD", value=f"${totalusd}", inline=True)
-    embed2.add_field(name="BTC", value=f"{btc}", inline=True)
-    embed2.add_field(name="Payment Address", value=f"{address}", inline=False)
-    embed2.set_footer(text=f"1 BTC = ${usdprice}")
-    await interaction.channel.send(f"<@{ticketdata['trader_seller_id']}> Send the payment along with the fee to the following address.", embed=embed2, view=PasteAddress())
+    embed2 = discord.Embed(title="Payment Information",description=f"The total USD includes a 0.5% fee of: **${numberToFloat(fee)}**\nMake sure to select the **Paid** button once you have sent the payment.", color=MAINCOLOR)
+    embed2.add_field(name="USD Amount", value=f"${numberToFloat(totalusd)}", inline=True)
+    embed2.add_field(name="Crypto Amount (BTC)", value=f"{btc}", inline=True)
+    embed2.add_field(name="Payment Address", value=f"```{address}```", inline=False)
+    embed2.set_footer(text=f"Price = ${usdprice}")
+    await interaction.channel.send(f"<@{ticketdata['guy_who_gives_btc']}> Send the payment to the following address!", embed=embed2, view=PasteAddress())
     ticketdata['trade_stated'] = "Yes"
     ticketdata['hold_address'] = address
     ticketdata['ticket_status'] = "Active"
@@ -1985,8 +1987,8 @@ class AUTO_CRYPTO_Tickets(discord.ui.View):
           "channel_id": channel.id,
           "channel_code": f"{code}",
           "channel_owner_id": interaction.user.id,
-          "trader_seller_id": 0,
-          "trader_receiver_id": 0,
+          "guy_who_gives_btc": 0,
+          "guy_who_gets_btc": 0,
           "trade_stated": "No",
           "trader_added": "No",
           "crypto_received": "No",
@@ -2016,14 +2018,10 @@ class AUTO_CRYPTO_Tickets(discord.ui.View):
         logembed = discord.Embed(description=f"Author: **{interaction.user.name}#{interaction.user.discriminator}** | ID: {interaction.user.id}\nTicket: **{channel.name}** | ID: {channel.id}\nAction: **Created Ticket**", color=SUCCCOLOR)
         logembed.set_author(name=f"{interaction.user.name}#{interaction.user.discriminator}", icon_url=f"{interaction.user.display_avatar.url}")
         await ticketlogs.send(embed=logembed)
-        embed = discord.Embed(title="﹒Chase's Middleman Service`", description=f"〃───────────〃\n**Hello there, {interaction.user.mention} ! ៸៸**\n",color=MAINCOLOR)
-        embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user} | {interaction.user.id}')
-        #await channel.send(f"{interaction.user.mention}\n> `This ticket will be closed in 10 minutes if the format wasn't specified`", embed=embed)
-        await channel.send(f"{interaction.user.mention} ||{dbchannel.id}||", embed=embed)
         await asyncio.sleep(0.2)
-        embed2 = discord.Embed(title="Are you the seller or the buyer?", description="Simply click:\n> \"Seller\" if you are the one giving the crypto.\n> \"Buyer\" if you are the one receiving the crypto.", color=MAINCOLOR)
+        embed2 = discord.Embed(title="Automated Middleman Ticket", description=f"Hi there, {interaction.user.mention}!\nAre you the buyer or the seller?\n\nClick **Seller** if you are receiving the crypto.\nClick **Buyer** if you are giving the crypto.", color=MAINCOLOR)
         embed2.set_footer(text="Selected: ")
-        await channel.send(embed=embed2, view=SellerOrBuyer())
+        await channel.send(f"{interaction.user.mention} ||{dbchannel.id}||", embed=embed2, view=SellerOrBuyer())
 
   @discord.ui.button(row=0, label='Buy Passes', style=discord.ButtonStyle.green, custom_id="passes_ticket", disabled=False, emoji="<:purchase_pass:995100317907697834>")
   async def button_callback2(self, button, interaction):
@@ -2108,7 +2106,7 @@ class PasteAddress(discord.ui.View):
   async def button_callback1(self, button, interaction):
     global session
     address = interaction.message.embeds[0].fields[2].value
-    await interaction.response.send_message(content=address, ephemeral=False)
+    await interaction.response.send_message(content=address, ephemeral=True)
 
   @discord.ui.button(row=0, label="Paid", style=discord.ButtonStyle.green, custom_id="paidcash", disabled=False)
   async def button_callback2(self, button, interaction):
@@ -2122,7 +2120,7 @@ class PasteAddress(discord.ui.View):
 
     await interaction.response.defer()
 
-    if interaction.user.id != int(ticketdata['trader_seller_id']):
+    if interaction.user.id != int(ticketdata['guy_who_gives_btc']):
       return
 
     for child in self.children:
@@ -2174,9 +2172,7 @@ class PasteAddress(discord.ui.View):
           status = "<a:load:992127235265925171> Unconfirmed <a:load:992127235265925171>"
           unconf += 1
 
-        txString += f"> ID: [Click Here](https://blockchair.com/bitcoin/transaction/{i['id']})\n> Status: {status}\n\n"
-
-      await interaction.channel.send("<a:checkmarktick:996838559766020266> Payment was received <a:checkmarktick:996838559766020266>")
+        txString += f"> [Click Here](https://blockchair.com/bitcoin/transaction/{i['id']})\n"
 
       trade_amount_usd_1 = totalbtc*usdprice-paid_fee_usd
       trade_amount_btc_1 = trade_amount_usd_1 / usdprice
@@ -2187,25 +2183,31 @@ class PasteAddress(discord.ui.View):
       await ticketdata_msg.edit(ticketdata)
       
       if unconf == 0:
-        embede = discord.Embed(title="Transaction/s", description="The transaction/s have already confirmed.", color=MAINCOLOR)
+        embede = discord.Embed(title="Transaction Information", description="The transaction has already confirmed.", color=MAINCOLOR)
+        embede.add_field(name="Transaction Hash", value=txString, inline=True)
+        embede.add_field(name="Current Status", value="Confirmed", inline=True)
         ticketdata['payment_detected'] = "Yes"
         ticketdata['crypto_received'] = "Yes"
         await ticketdata_msg.edit(ticketdata)
       else:
-        embede = discord.Embed(title="Transaction/s", description="The bot will ping both of you once the transaction/s reaches 1 confirmation.", color=MAINCOLOR)
+        embede = discord.Embed(title="Transaction Information", description="Both dealers will be pinged when the transaction reaches 1 confirmation.", color=MAINCOLOR)
+        embede.add_field(name="Transaction Hash", value=txString, inline=True)
+        embede.add_field(name="Current Status", value="Unconfirmed", inline=True)
         ticketdata['payment_detected'] = "Yes"
         await ticketdata_msg.edit(ticketdata)
 
-      embede.add_field(name="Transaction/s Hash", value=txString, inline=False)
-      await interaction.channel.send(embed=embede)
+      await interaction.channel.send("A payment was detected! <a:tx_loading:992127235265925171>", embed=embede)
 
       if unconf != 0:
-        embad = discord.Embed(title="Do you want to skip the transaction check?", description="Clicking \"Yes\" will skip the transaction check part and contiune to the next step. `(both traders are required to click this)`", color=MAINCOLOR)
-        embad.add_field(name="Users", value="`None`", inline=False)
-        await interaction.channel.send("Please wait until the transaction/s reaches 1 confirmation.", embed=embad, view=SkipTx())
+        embad = discord.Embed(title="Skip the confirmation?", description="Clicking **Yes** will skip the transaction confirmation.\nBoth traders are required to click this button for it to go through.", color=MAINCOLOR)
+        embad.add_field(name="Agreed", value="`None`", inline=False)
+        await interaction.channel.send("To prevent fraud, it is recommended that you wait for **1 confirmation.**\nHowever, if both traders agree and know I will not compensate losses, you may skip this part.", embed=embad, view=SkipTx())
 
       if unconf == 0:
-        await interaction.channel.send(f"<@{ticketdata['trader_receiver_id']}> You may give your trader the promised items/money.\n\n<@{ticketdata['trader_seller_id']}> Once your trader gives you your stuff, use the `$confirm` command to let them withdraw their crypto.")
+        embas = discord.Embed(title="Transaction Confirmed", description="The transaction has reached **1 confirmation!** <a:tx_confirmed:1009354585560846386>", color=SUCCCOLOR)
+        embas.add_field(name="Transaction Hash", value=txString, inline=True)
+        embas.add_field(name="Current Status", value="Confirmed", inline=True)
+        await interaction.channel.send(f"**Seller**\n<@{ticketdata['guy_who_gets_btc']}>, you may give the promised money/items to the other dealer.\n\n**Buyer**\n<@{ticketdata['guy_who_gives_btc']}>, once you receive the payment/items from seller, use the `$confirm` command to allow them to withdraw their cryptocurrency.", embed=embas)
 
     else:
       req_usd_amount = promised_usd_amount-received_usd_amount
@@ -2239,7 +2241,7 @@ async def confirm(ctx):
     if ticketdata['ticket_status'] != "Active":
       return
 
-    if ctx.author.id != int(ticketdata['trader_seller_id']):
+    if ctx.author.id != int(ticketdata['guy_who_gives_btc']):
       await ctx.reply("You don't have permission to use this command.")
       return
 
@@ -2255,7 +2257,7 @@ async def confirm(ctx):
     class haveYouBeenPaid(discord.ui.View):
       def __init__(self):
         super().__init__(timeout=None)
-      @discord.ui.button(row=0, label="Yes", style=discord.ButtonStyle.green, custom_id="lolYes", disabled=False)
+      @discord.ui.button(row=0, label="Proceed", style=discord.ButtonStyle.red, custom_id="lolYes", disabled=False)
       async def button_callback1(self, button, interaction):
                 
         currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
@@ -2266,7 +2268,7 @@ async def confirm(ctx):
 
         await interaction.response.defer()
 
-        if interaction.user.id != int(ticketdata['trader_seller_id']):
+        if interaction.user.id != int(ticketdata['guy_who_gives_btc']):
           return
         
         for child in self.children:
@@ -2282,26 +2284,10 @@ async def confirm(ctx):
         ticketdata['trade_confirmed'] = "Yes"
         await ticketdata_msg.edit(ticketdata)
         
-        await interaction.message.reply(content=f"**Your trader can now withdraw their crypto.**")
-        await interaction.channel.send(f"<@{ticketdata['trader_receiver_id']}> Use the command `$redeem Addy`\nAddy is your crypto address.")
+        await interaction.channel.send(embed=discord.Embed(title="Withdrawal Permission Granted", description="The other dealer can now withdraw their cryptocurrency.", color=withdrawcolor))
+        await interaction.channel.send(f"<@{ticketdata['guy_who_gets_btc']}>", embed=discord.Embed(title="To withdraw, use the following command:", description="```$redeem [address]```"))
         
-      @discord.ui.button(row=0, label="No", style=discord.ButtonStyle.red, custom_id="Nopee", disabled=False)
-      async def button_callback2(self, button, interaction):
-                
-        currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
-        dbchannel_id = int(currentticket[0].content.split("||")[1])
-        dbchannel = bot.get_channel(dbchannel_id)
-        ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
-        ticketdata = ast.literal_eval(ticketdata_msg.content)
-
-        await interaction.response.defer()
-
-        if interaction.user.id != int(ticketdata['trader_seller_id']):
-          return
-
-        await interaction.message.delete()
-      
-    embed=discord.Embed(title="Are you sure you have received your items/money?", description="> By clicking \"Yes\", you will give your trader permission to withdraw their crypto.", color=MAINCOLOR)
+    embed=discord.Embed(title="Warning", description="Are you 100% sure you have received the payment/items?\nBy clicking \"Proceed\", the other dealer will be given permission to withdraw.", color=warningcolor)
     await ctx.reply(embed=embed, view=haveYouBeenPaid())
 
 @bot.command()
@@ -2324,7 +2310,7 @@ async def redeem(ctx, addy=None):
     if ticketdata['ticket_status'] != "Active":
       return
 
-    if ctx.author.id != int(ticketdata['trader_receiver_id']):
+    if ctx.author.id != int(ticketdata['guy_who_gets_btc']):
       await ctx.reply("You don't have permission to use this command.")
       return
 
@@ -2364,7 +2350,7 @@ async def redeem(ctx, addy=None):
 
         await interaction.response.defer()
 
-        if interaction.user.id != int(ticketdata['trader_receiver_id']):
+        if interaction.user.id != int(ticketdata['guy_who_gets_btc']):
           return
         
         for child in self.children:
@@ -2402,14 +2388,17 @@ async def redeem(ctx, addy=None):
         ticketdata['has_paid'] = "Yes"
         await ticketdata_msg.edit(ticketdata)
         
-        await interaction.message.reply(content=f"**The bot has sent `${useam}` | `{shorten_btc(float(ticketdata['trade_amount_cry']))}` to `{addy}`**\nTransaction: https://blockchair.com/bitcoin/transaction/{txid}")
+        embed=discord.Embed(title="Funds Withdrawn", description=f"The bot has sent the amount of **${useame} ({shorten_btc(float(ticketdata['trade_amount_cry']))})** to the address **{addy}**!", color=MAINCOLOR)
+        embed.add_field(name="Transaction Hash", value=f"[Click Here](https://blockchair.com/bitcoin/transaction/{txid})", inline=False)
+
+        await interaction.channel.send(embed=embed)
 
         newem = discord.Embed(title="Vouching", description=f"Thanks for using **{interaction.guild.name}**!\nIf you were satisfied, please vouch in <#825868273643159563>", color=MAINCOLOR)
-        newem.add_field(name="Example", value="Vouch <@891449503276736512> $420")
+        newem.add_field(name="Example", value="Vouch <@891449503276736512> USD Amount/Trade Description")
 
-        await interaction.channel.send(content=f"<@{ticketdata['trader_receiver_id']}> <@{ticketdata['trader_seller_id']}>", embed=newem)
+        await interaction.channel.send(content=f"<@{ticketdata['guy_who_gets_btc']}>, <@{ticketdata['guy_who_gives_btc']}>", embed=newem)
 
-      @discord.ui.button(row=0, label="No", style=discord.ButtonStyle.red, custom_id="noitsnot", disabled=False)
+      @discord.ui.button(row=0, label="Retry", style=discord.ButtonStyle.red, custom_id="noitsnot", disabled=False)
       async def button_callback2(self, button, interaction):
                 
         currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
@@ -2420,7 +2409,7 @@ async def redeem(ctx, addy=None):
 
         await interaction.response.defer()
 
-        if interaction.user.id != int(ticketdata['trader_receiver_id']):
+        if interaction.user.id != int(ticketdata['guy_who_gets_btc']):
           return
 
         await interaction.message.delete()
@@ -2428,14 +2417,14 @@ async def redeem(ctx, addy=None):
     usdprice = session.get("https://apirone.com/api/v2/ticker?currency=btc").json().get('usd')
     useame = shorten(usdprice*float(ticketdata['trade_amount_cry']))
 
-    embed=discord.Embed(title="Are you sure that this is your address?", description=f"> By clicking \"Yes\", the bot will send `${useame}` | `{shorten_btc(float(ticketdata['trade_amount_cry']))}` to that address.", color=MAINCOLOR)
+    embed=discord.Embed(title="Are you sure that is your address?", description=f"If you mistype your address and someone else receives the payment, **I will not compensate you.**\n\nBy clicking **Yes**, the bot will send **${useame} ({shorten_btc(float(ticketdata['trade_amount_cry']))})** to that address.", color=MAINCOLOR)
     await ctx.reply(embed=embed, view=IsThisYourAddy())
 
 
 class SellerOrBuyer(discord.ui.View):
   def __init__(self):
     super().__init__(timeout=None)
-  @discord.ui.button(row=0, label="Seller", style=discord.ButtonStyle.blurple, custom_id="imseller", disabled=False)
+  @discord.ui.button(row=0, label="Seller", style=discord.ButtonStyle.red, custom_id="imseller", disabled=False)
   async def button_callback1(self, button, interaction):
     
     msgs = await interaction.channel.history(limit=None, oldest_first=True).flatten()
@@ -2450,18 +2439,17 @@ class SellerOrBuyer(discord.ui.View):
       child.disabled = True
     await interaction.message.edit(view=self)
 
-
     currentticket = await interaction.channel.history(limit=1, oldest_first=True).flatten()
     dbchannel_id = int(currentticket[0].content.split("||")[1])
     dbchannel = bot.get_channel(dbchannel_id)
     ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
     ticketdata = ast.literal_eval(ticketdata_msg.content)
 
-    ticketdata['trader_seller_id'] = interaction.user.id
+    ticketdata['guy_who_gets_btc'] = interaction.user.id
     ticketdata['owner_trader_type'] = "seller"
     await ticketdata_msg.edit(ticketdata)
 
-    embed = discord.Embed(title="What's the CryptoCurrency type?", description="Select the coin that you're giving to your trader.", color=MAINCOLOR)
+    embed = discord.Embed(title="What cryptocurrency am I handling?", description="Select the payment type that you are going to receive from the other dealer.", color=MAINCOLOR)
     embed.set_footer(text="Selected: ")
     await interaction.channel.send(embed=embed, view=CryptoType())
 
@@ -2469,7 +2457,7 @@ class SellerOrBuyer(discord.ui.View):
     editedembed.set_footer(text="Selected: Seller")
     await interaction.message.edit(embed=editedembed)
 
-  @discord.ui.button(row=0, label="Buyer", style=discord.ButtonStyle.blurple, custom_id="imbuyer", disabled=False)
+  @discord.ui.button(row=0, label="Buyer", style=discord.ButtonStyle.green, custom_id="imbuyer", disabled=False)
   async def button_callback2(self, button, interaction):
     msgs = await interaction.channel.history(limit=None, oldest_first=True).flatten()
     user = msgs[0].mentions[0]
@@ -2489,11 +2477,11 @@ class SellerOrBuyer(discord.ui.View):
     ticketdata_msg = await dbchannel.history(limit=1, oldest_first=True).flatten();ticketdata_msg=ticketdata_msg[0]
     ticketdata = ast.literal_eval(ticketdata_msg.content)
 
-    ticketdata['trader_receiver_id'] = interaction.user.id
+    ticketdata['guy_who_gives_btc'] = interaction.user.id
     ticketdata['owner_trader_type'] = "buyer"
     await ticketdata_msg.edit(ticketdata)
 
-    embed = discord.Embed(title="What's the CryptoCurrency type?", description="Select the coin that you're going to receive from your trader.", color=MAINCOLOR)
+    embed = discord.Embed(title="What cryptocurrency am I handling?", description="Select the payment type that you are going to give to the other dealer.", color=MAINCOLOR)
     embed.set_footer(text="Selected: ")
     await interaction.channel.send(embed=embed, view=CryptoType())
 
@@ -2535,8 +2523,8 @@ class SkipTx(discord.ui.View):
     ticketdata = ast.literal_eval(ticketdata_msg.content)
 
     trader_ids = []
-    trader_ids.append(int(ticketdata['trader_seller_id']))
-    trader_ids.append(int(ticketdata['trader_receiver_id']))
+    trader_ids.append(int(ticketdata['guy_who_gives_btc']))
+    trader_ids.append(int(ticketdata['guy_who_gets_btc']))
 
     await interaction.response.defer()
 
@@ -2569,7 +2557,8 @@ class SkipTx(discord.ui.View):
         await interaction.message.edit(embed=msg_embed, view=self)
         ticketdata['skip_tx'] = "Yes"
         await ticketdata_msg.edit(ticketdata)
-        await interaction.channel.send(f"<@{ticketdata['trader_receiver_id']}> You may give your trader the promised items/money.\n\n<@{ticketdata['trader_seller_id']}> Once your trader gives you your stuff, use the `$confirm` command to let them withdraw their crypto.")
+        await interaction.channel.send(f"**Seller**\n<@{ticketdata['guy_who_gets_btc']}>, you may give the promised money/items to the other dealer.\n\n**Buyer**\n<@{ticketdata['guy_who_gives_btc']}>, once you receive the payment/items from seller, use the `$confirm` command to allow them to withdraw their cryptocurrency.")
+
 
 class CryptoType(discord.ui.View):
   def __init__(self):
@@ -2598,7 +2587,7 @@ class CryptoType(discord.ui.View):
     ticketdata['crypto_type'] = "BTC"
     await ticketdata_msg.edit(ticketdata)
 
-    embed = discord.Embed(title="How much is the deal in USD?", description="Reply with numbers.", color=MAINCOLOR)
+    embed = discord.Embed(title="How much is the deal in USD?", description="Reply with a number value (no need to include $).", color=MAINCOLOR)
     await interaction.channel.send(embed=embed)
 
     editedembed = interaction.message.embeds[0]
@@ -2607,12 +2596,13 @@ class CryptoType(discord.ui.View):
 
     await interaction.channel.set_permissions(user, send_messages=True, view_channel=True, attach_files=True, embed_links=True, read_message_history=True)
 
-  @discord.ui.button(row=0, label="ETH", style=discord.ButtonStyle.blurple, custom_id="ethtype", disabled=True, emoji="<:fee_eth:913749231678930975>")
+  @discord.ui.button(row=0, label="ETH", style=discord.ButtonStyle.blurple, custom_id="ethtype", disabled=True, emoji="<:fee_eth:1008968303361921024>")
   async def button_callback2(self, button, interaction):
     print(1)
 
-  @discord.ui.button(row=0, label="LTC", style=discord.ButtonStyle.blurple, custom_id="ltctype", disabled=True, emoji="<:fee_ltc:917264308218515526>")
+  @discord.ui.button(row=0, label="LTC", style=discord.ButtonStyle.blurple, custom_id="ltctype", disabled=True, emoji="<:fee_ltc:1008968308139241572>")
   async def button_callback3(self, button, interaction):
     print(1)
+
 
 bot.run(TOKEN)
