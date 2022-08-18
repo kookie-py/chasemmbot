@@ -1805,7 +1805,7 @@ class Use_MMPass(discord.ui.View):
     res = session.post(f'https://apirone.com/api/v2/accounts/apr-{APIRONE_ACCOUNT_ID}/addresses', json=json_data)
     address = res.json()['address']
     btc = getWholeFloat(btc)
-    embed2 = discord.Embed(title="Payment Information",description=f"The total USD includes a 0.5% fee of: **${numberToFloat(fee)}**\nMake sure to select the **Paid** button once you have sent the payment.", color=MAINCOLOR)
+    embed2 = discord.Embed(title="Payment Information",description=f"Make sure to select the **Paid** button once you have sent the payment.", color=MAINCOLOR)
     embed2.add_field(name="USD Amount", value=f"${numberToFloat(totalusd)}", inline=True)
     embed2.add_field(name="Crypto Amount (BTC)", value=f"{btc}", inline=True)
     embed2.add_field(name="Payment Address", value=f"```{address}```", inline=False)
