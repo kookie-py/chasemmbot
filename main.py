@@ -1,35 +1,24 @@
 #-*- coding:utf-8 -*-
 import os
-from re import I
 import discord
 import discord.ui
 import asyncio
 from discord import NotFound, Forbidden, HTTPException
-from discord.channel import CategoryChannel
-from discord.embeds import Embed
-from discord.ext.commands import errors
-from discord.utils import get
 from discord.ext.commands.errors import CommandNotFound
 import pytz
-from datetime import datetime, timedelta, tzinfo
-from discord import CategoryChannel
+from datetime import datetime, timedelta
 #Subimports.
 from discord.ext import commands
 from discord.ext import tasks
-from discord.ext import pages
 from rbxapiyes.exceptions import PlayerNotFound, Unauthorized
 from rbxapiyes.Client import Client as Client1
-from ro_py import Client as Client2
 import time
 import chat_exporter
 import io
 from io import *
-import json
 import requests
-import csv
 import arrow
 import math
-import humanfriendly
 import DiscordUtils
 import difflib
 import random, string
