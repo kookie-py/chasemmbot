@@ -399,7 +399,7 @@ class Closed_Msgs(discord.ui.View):
     await mess.edit(embed=transcriptembed.add_field(name="**Direct Transcript**", value=f"[Direct Transcript](https://tickettool.xyz/direct?url={attachment.url})", inline=True))
     await mess.edit(embed=transcriptembed.add_field(name="**Users in transcript**", value=f"{user_string}", inline=True))
     loading_embed1 = discord.Embed(title="Ticket Saved", description=f"All ticket information has been saved to **<#AUTOCRYPTO_LOGS_ID>**.",color = MAINCOLOR)
-    await interaction.edit_original_message(content=f"{interaction.user.mention}", embed=loading_embed1)
+    await interaction.edit_original_response(content=f"{interaction.user.mention}", embed=loading_embed1)
 
 @bot.command()
 async def remove(ctx, user : discord.Member):  
@@ -1924,7 +1924,7 @@ class AUTO_CRYPTO_Tickets(discord.ui.View):
     await interaction.response.send_message(content=f"**Prepearing..**", ephemeral=True)
   
     if interaction.user.id in users_oncooldown:
-      await interaction.edit_original_message(content=f"**Slow Down! You're on cooldown.**")
+      await interaction.edit_original_response(content=f"**Slow Down! You're on cooldown.**")
       return
     else:
       users_oncooldown.append(interaction.user.id)        
@@ -1952,11 +1952,11 @@ class AUTO_CRYPTO_Tickets(discord.ui.View):
           users_oncooldown.remove(interaction.user.id)
         except ValueError:
           pass
-        await interaction.edit_original_message(content=f"**You Already Have a Ticket Created!** -> <#{ticketdata['channel_id']}>")
+        await interaction.edit_original_response(content=f"**You Already Have a Ticket Created!** -> <#{ticketdata['channel_id']}>")
         return
 
       if has_ticket == False:          
-        await interaction.edit_original_message(content=f"**Creating ticket..**")
+        await interaction.edit_original_response(content=f"**Creating ticket..**")
 
         guild = bot.get_guild(GUILD_ID)
         ticketlogs = bot.get_channel(AUTOCRYPTO_LOGS_ID)
@@ -1969,7 +1969,7 @@ class AUTO_CRYPTO_Tickets(discord.ui.View):
         }
         code = "".join(random.choices(string.ascii_letters + string.digits, k=6))
         channel = await guild.create_text_channel(f"“ゝmm-{interaction.user.name}", topic=f"Chase's Auto Crypto MM | Request ID: {code}", category=tickets_category, overwrites=overwrites)
-        await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
+        await interaction.edit_original_response(content=f"**Ticket Created!** -> {channel.mention}")
         
         dbchannel = await dbserver.create_text_channel(name=f"{interaction.user.id}-{channel.id}-auto")
         dbdata = {
@@ -2019,7 +2019,7 @@ class AUTO_CRYPTO_Tickets(discord.ui.View):
     await interaction.response.send_message(content=f"**Prepearing..**", ephemeral=True)
   
     if interaction.user.id in users_oncooldown:
-      await interaction.edit_original_message(content=f"**Slow Down! You're on cooldown.**")
+      await interaction.edit_original_response(content=f"**Slow Down! You're on cooldown.**")
       return
     else:
       users_oncooldown.append(interaction.user.id)        
@@ -2047,11 +2047,11 @@ class AUTO_CRYPTO_Tickets(discord.ui.View):
           users_oncooldown.remove(interaction.user.id)
         except ValueError:
           pass
-        await interaction.edit_original_message(content=f"**You Already Have a Ticket Created!** -> <#{ticketdata['channel_id']}>")
+        await interaction.edit_original_response(content=f"**You Already Have a Ticket Created!** -> <#{ticketdata['channel_id']}>")
         return
 
       if has_ticket == False:          
-        await interaction.edit_original_message(content=f"**Creating ticket..**")
+        await interaction.edit_original_response(content=f"**Creating ticket..**")
 
         guild = bot.get_guild(GUILD_ID)
         ###
@@ -2065,7 +2065,7 @@ class AUTO_CRYPTO_Tickets(discord.ui.View):
         }
         code = "".join(random.choices(string.ascii_letters + string.digits, k=6))
         channel = await guild.create_text_channel(f"“ゝpass-{interaction.user.name}", topic=f"Chase's Service | Request ID: {code}", category=tickets_category, overwrites=overwrites)
-        await interaction.edit_original_message(content=f"**Ticket Created!** -> {channel.mention}")
+        await interaction.edit_original_response(content=f"**Ticket Created!** -> {channel.mention}")
         
         dbchannel = await dbserver.create_text_channel(name=f"{interaction.user.id}-{channel.id}-pass")
         dbdata = {
