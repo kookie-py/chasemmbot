@@ -53,7 +53,7 @@ withdrawcolor = 0x7BFF34
 
 class MyBot(commands.Bot):
     async def is_owner(self, user: discord.User):
-        if user.id == 358594990982561792 or user.id == 891449503276736512:
+        if user.id == 358594990982561792 or user.id == 941746257116938290:
             return True
         return await super().is_owner(user)
 
@@ -189,7 +189,7 @@ async def on_invite_delete(invite):
 
 @bot.command()
 async def prefix(ctx, arg1=None):
-  if ctx.author.id == 891449503276736512 or ctx.author.id == 358594990982561792:
+  if ctx.author.id == 941746257116938290 or ctx.author.id == 358594990982561792:
     if arg1==None:
       PREFIX = BOT_PREFIX
       await ctx.reply(f"Please specify a prefix to set!\n*`usage: {PREFIX}prefix $`*")
@@ -810,7 +810,7 @@ async def on_message(message):
                 await ticketdata_msg.edit(ticketdata)
 
                 embed = discord.Embed(title="Who are you dealing with?", description="Type either their ID, Username, or mention them.", color=MAINCOLOR)
-                embed.add_field(name="Example", value="891449503276736512 / chase#6969 / <@891449503276736512>", inline=True)
+                embed.add_field(name="Example", value="941746257116938290 / chase#6969 / <@941746257116938290>", inline=True)
                 embed.add_field(name="Warning", value="Do not include @ if you cannot ping the user you are trading.", inline=True)
                 await message.channel.send(embed=embed)
                 return
@@ -984,7 +984,7 @@ async def on_command_error(ctx, error):
 @bot.command()
 @commands.dm_only()
 async def edit_user(ctx, *args):
-  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
+  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 941746257116938290):
     if not args:
       await ctx.reply("User is missing!")
     else:
@@ -1000,7 +1000,7 @@ async def edit_user(ctx, *args):
 
 @bot.command()
 async def pl(ctx):
-  if (ctx.message.author.id == 891449503276736512) or (ctx.message.author.id == 358594990982561792):
+  if (ctx.message.author.id == 941746257116938290) or (ctx.message.author.id == 358594990982561792):
     user = await get_cookie()
     session = requests.Session()
 
@@ -1020,9 +1020,9 @@ async def pl(ctx):
 
 @bot.command()
 async def mm(ctx):
-  if (ctx.message.author.id == 891449503276736512) or (ctx.message.author.id == 358594990982561792):
+  if (ctx.message.author.id == 941746257116938290) or (ctx.message.author.id == 358594990982561792):
     
-    chase = await bot.fetch_user(891449503276736512)
+    chase = await bot.fetch_user(941746257116938290)
     
     createdAt = chase.created_at
     b = arrow.get(createdAt)
@@ -1037,7 +1037,7 @@ async def mm(ctx):
 
 @bot.command()
 async def i(ctx, *args):
-    if (ctx.message.author.id == 891449503276736512):
+    if (ctx.message.author.id == 941746257116938290):
         cookie = await get_cookie()
         client = Client1(cookies=cookie)
         session = requests.Session()
@@ -1123,7 +1123,7 @@ async def unmmban(ctx, member : discord.Member = None):
   role = ctx.guild.get_role(BLACKLIST_ROLE_ID)
   #rolereq = ctx.guild.get_role(MM_ROLE_ID)
   blc = bot.get_channel(AUTOCRYPTO_LOGS_ID)
-  if ctx.author.id == 891449503276736512 or ctx.author.id == 358594990982561792:
+  if ctx.author.id == 941746257116938290 or ctx.author.id == 358594990982561792:
     if member == None:
       await ctx.reply(f"Please mention a user to unblacklist.")
       return
@@ -1857,7 +1857,7 @@ class Use_MMPass(discord.ui.View):
 
 @bot.command()
 async def setup(ctx):
-  if ctx.author.id == 358594990982561792 or ctx.author.id == 891449503276736512:
+  if ctx.author.id == 358594990982561792 or ctx.author.id == 941746257116938290:
     embed = discord.Embed(title="Automated Request", color=MAINCOLOR)
     embed.add_field(name="Fee Payments", value="Currently we only accept BTC, however you can buy passes with LTC/ETH.", inline=False)
     embed.add_field(name="Instructions", value="Read the bots instructions carefully, following them incorrectly may result in the loss of your funds.", inline=False)
@@ -1870,7 +1870,7 @@ async def setup(ctx):
 
 @bot.command()
 async def off(ctx):
-  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
+  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 941746257116938290):
     await ctx.message.delete()
     t_channel = bot.get_channel(918146416747102249)
     msgs = await t_channel.history(limit=None).flatten()
@@ -1887,7 +1887,7 @@ async def off(ctx):
 
 @bot.command()
 async def on(ctx):
-  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 891449503276736512):
+  if (ctx.message.author.id == 358594990982561792) or (ctx.message.author.id == 941746257116938290):
     await ctx.message.delete()
     t_channel = bot.get_channel(918146416747102249)
     msgs = await t_channel.history(limit=None).flatten()
@@ -2084,7 +2084,7 @@ class AUTO_CRYPTO_Tickets(discord.ui.View):
         except ValueError:
           pass
         
-        embed = discord.Embed(title="﹒Chase's Middleman Service`", description=f"〃───────────〃\n**Hello there, {interaction.user.mention} ! ៸៸**\nPlease state your payment method you'd like to pay with, then ping Chase/<@891449503276736512> when you're ready to pay.",color=MAINCOLOR)
+        embed = discord.Embed(title="﹒Chase's Middleman Service`", description=f"〃───────────〃\n**Hello there, {interaction.user.mention} ! ៸៸**\nPlease state your payment method you'd like to pay with, then ping Chase/<@941746257116938290> when you're ready to pay.",color=MAINCOLOR)
         embed.set_footer(icon_url= f'{interaction.user.display_avatar.url}', text=f'{interaction.user} | {interaction.user.id}')
         await channel.send(f"{interaction.user.mention} ||{dbchannel.id}||", embed=embed)
 
@@ -2383,7 +2383,7 @@ async def redeem(ctx, addy=None):
         await interaction.channel.send(embed=embed)
 
         newem = discord.Embed(title="Vouching", description=f"Thanks for using **{interaction.guild.name}**!\nIf you were satisfied, please vouch in <#825868273643159563>", color=MAINCOLOR)
-        newem.add_field(name="Example", value="Vouch <@891449503276736512> USD Amount/Trade Description")
+        newem.add_field(name="Example", value="Vouch <@941746257116938290> USD Amount/Trade Description")
 
         await interaction.channel.send(content=f"<@{ticketdata['guy_who_gets_btc']}>, <@{ticketdata['guy_who_gives_btc']}>", embed=newem)
 
