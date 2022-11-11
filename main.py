@@ -24,6 +24,8 @@ import difflib
 import random, string
 import ast
 
+#TOKEN = "OTQxMTk1NTMyODU1MDQyMDc4.G_fMBP.FtXosi1p2R8hlvKPutNjwmBeC71Fjxvare8Y4o"
+TOKEN = "MTA0MDY0OTM4Mzg4NjE5MjY1MA.GXtQFu.JUEZdh1zuSxKl-3eHOKuXYASOSscX2ChgWK8KQ"
 BOT_PREFIX = "$"
 AUTOCRYPTO_CATEGORY_ID = 934103126468853760
 PASSES_CATEGORY_ID = 927037368656068678
@@ -135,9 +137,6 @@ async def tx_checker():
         pass
       except ValueError:
         pass
-
-
-TOKEN = "OTQxMTk1NTMyODU1MDQyMDc4.G_fMBP.FtXosi1p2R8hlvKPutNjwmBeC71Fjxvare8Y4o"
 
 intents = discord.Intents.all()
 intents.members = True
@@ -2593,5 +2592,8 @@ class CryptoType(discord.ui.View):
   async def button_callback3(self, button, interaction):
     print(1)
 
+@bot.slash_command(guild_ids=[713213895073857548], description="Sup")
+async def hello(ctx):
+  await ctx.respond("Hi! Have a nice day!")
 
 bot.run(TOKEN)
