@@ -2592,7 +2592,7 @@ class CryptoType(discord.ui.View):
   async def button_callback3(self, button, interaction):
     print(1)
 
-@bot.slash_command(guild_ids=[713213895073857548], description="Sup")
+@bot.slash_command(description="Sup")
 async def hello(ctx):
   await ctx.respond("Hi! Have a nice day!")
 
